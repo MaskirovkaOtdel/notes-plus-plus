@@ -60,8 +60,22 @@ jobs:
         env:
           FORCE: ${{ inputs.force == true && '--force' || '' }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
+
+          # The engine exits 0 to release, 2 to skip (a deliberate decision —
+          # cooldown, cap, dedupe, or no release-worthy commits). Only a real
+          # crash (any other code) should fail the job.
+          set +e
           node scripts/version-engine.mjs --github-output $FORCE
+          code=$?
+          set -e
+
+          if [ "$code" -eq 0 ] || [ "$code" -eq 2 ]; then
+            echo "engine exit code: $code (0=release, 2=skip)"
+            exit 0
+          fi
+          echo "::error::version engine crashed with exit code $code"
+          exit "$code"
 
       - name: Show decision
         if: steps.version.outputs.should_release == 'true'
