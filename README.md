@@ -1,0 +1,99 @@
+# Notes++ 📝
+
+A fast, offline-capable, scalable notes application. Web + PWA front end, Node
+API, Postgres storage, and a fully automated GitHub Actions pipeline for
+prechecks, auto-merge, and semantic versioning.
+
+## Stack
+
+| Layer         | Choice                        | Why                                           |
+| ------------- | ----------------------------- | --------------------------------------------- |
+| Frontend      | React 19 + Vite + Tailwind v4 | Fast HMR, small bundles, PWA-ready            |
+| PWA           | vite-plugin-pwa (Workbox)     | Offline notes via service worker              |
+| Data fetching | TanStack Query                | Caching, invalidation, optimistic updates     |
+| API           | Fastify 5 + Zod               | Fast, schema-validated, typed end-to-end      |
+| ORM           | Drizzle                       | Type-safe SQL, low overhead, easy migrations  |
+| Database      | PostgreSQL 16                 | Scalable, full-text search when needed        |
+| Monorepo      | pnpm workspaces + Turborepo   | Cached, parallel, one repo for app+API+shared |
+| Tests         | Vitest + Playwright           | Fast units with coverage gate + real E2E      |
+| CI/CD         | GitHub Actions                | Prechecks, auto-merge, versioned releases     |
+
+## Repository layout
+
+```
+apps/
+  api/          Fastify + Drizzle + Postgres (CRUD /notes, /health)
+  web/          React + Vite + PWA client
+packages/
+  shared/       Zod schemas + types shared by web and API
+  ui/           Reusable React primitives (Button, NoteCard)
+e2e/            Playwright end-to-end tests
+infra/          docker-compose for local Postgres
+scripts/        Version engine + release-notes generator
+.github/        Workflows, CODEOWNERS, PR template
+```
+
+## Getting started
+
+```bash
+pnpm install
+pnpm dev              # web on :5173, api on :4000
+```
+
+The API runs with an in-memory store when `DATABASE_URL` is unset. For a real
+database:
+
+```bash
+pnpm db:up
+cp .env.example .env  # set DATABASE_URL
+pnpm dev:api
+```
+
+## Scripts
+
+| Command                        | Description                        |
+| ------------------------------ | ---------------------------------- |
+| `pnpm dev`                     | Run web + api in watch mode        |
+| `pnpm build`                   | Production build of all packages   |
+| `pnpm lint` / `pnpm typecheck` | Static checks                      |
+| `pnpm test`                    | Unit tests                         |
+| `pnpm coverage`                | Unit tests + coverage gate         |
+| `pnpm test:e2e`                | Playwright end-to-end              |
+| `pnpm version:check`           | Dry-run the version engine locally |
+| `pnpm db:up` / `db:down`       | Manage local Postgres              |
+
+## Versioning & releases
+
+Versioning is SemVer, driven entirely by Conventional Commits:
+
+- `X.X.1 → X.X.2` — small patch/hotfix (`fix`, `perf`, `revert`)
+- `X.1.X → X.2.X` — mainstream update (`feat`)
+- `1.X.X → 2.X.X` — important update (`BREAKING CHANGE` or `type!:`)
+
+Releases are cut automatically on merges to `main`, guarded by anti-overflow
+gates so tags never flood:
+
+1. **Type gate** — only release-worthy commit types produce a tag.
+2. **Path gate** — docs/meta/config-only changes are ignored.
+3. **Cooldown** — rapid merges batch into one release.
+4. **24h cap** — a rolling cap prevents runaway releases.
+5. **Dedupe** — an existing version is never re-tagged.
+
+A `hotfix` commit marker (`[release-now]`) or a manual `workflow_dispatch` with
+`force` bypasses the cooldown and cap. Run `pnpm version:check` locally to see
+what the engine would decide.
+
+## Automation
+
+| Workflow              | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `ci.yml`              | Lint, typecheck, unit + coverage gate, build, E2E            |
+| `commit-lint.yml`     | Enforce Conventional Commits on every PR                     |
+| `auto-merge.yml`      | Owner PRs auto-merge; third-party PRs contained on `contrib` |
+| `contrib-landing.yml` | Keeps a rolling `contrib → main` PR open                     |
+| `sync-contrib.yml`    | Fast-forwards `contrib` to `main` after merges               |
+| `release.yml`         | Computes version, tags, and publishes GitHub Releases        |
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

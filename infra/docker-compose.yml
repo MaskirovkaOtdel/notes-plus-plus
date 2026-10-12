@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: notespp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notespp
+      POSTGRES_PASSWORD: notespp
+      POSTGRES_DB: notespp
+    ports:
+      - "5432:5432"
+    volumes:
+      - notespp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notespp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  notespp_pgdata:

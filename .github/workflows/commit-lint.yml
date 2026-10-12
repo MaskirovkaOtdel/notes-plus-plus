@@ -1,0 +1,50 @@
+# ============================================================================
+# Commit lint — enforce Conventional Commits on every PR
+# ============================================================================
+# The version engine reads commit types (feat/fix/BREAKING) to decide bumps,
+# so commit format is a hard contract, not a style preference. Contributors
+# don't run local husky hooks, so CI is the authoritative gate.
+# ============================================================================
+
+name: Commit lint
+
+on:
+  pull_request:
+    branches: [main, contrib]
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: conventional commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint commits in the PR range
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          if git rev-parse -q --verify "$BASE" >/dev/null; then
+            pnpm exec commitlint --from "$BASE" --to "$HEAD" --verbose
+          else
+            # Fallback for shallow/unavailable base.
+            pnpm exec commitlint --last --verbose
+          fi

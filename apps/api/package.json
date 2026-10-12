@@ -1,0 +1,32 @@
+{
+  "name": "@notespp/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@notespp/shared": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "fastify": "catalog:",
+    "fastify-type-provider-zod": "^4.0.2",
+    "postgres": "^3.4.9",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "@types/node": "^24.10.9",
+    "@vitest/coverage-v8": "catalog:",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.21.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

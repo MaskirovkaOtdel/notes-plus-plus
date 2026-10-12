@@ -1,0 +1,64 @@
+# ============================================================================
+# Auto-sync: main -> contrib
+# ============================================================================
+# After every merge into `main`, fast-forward the `contrib` landing zone so
+# third parties always build against current code and the landing PR stays
+# small.
+#
+# Guard: if `contrib` holds unique commits that are not yet in `main` (an
+# unmerged third-party contribution), we do NOT clobber them. Instead we leave
+# `contrib` alone and note that it needs a rebase.
+# ============================================================================
+
+name: Sync contrib
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-contrib
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: fast-forward contrib
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install GitHub CLI context
+        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+
+      - name: Sync contrib to main (guarded)
+        run: |
+          set -euo pipefail
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main contrib
+
+          UNIQUE=$(git rev-list --count origin/contrib ^origin/main 2>/dev/null || echo 0)
+
+          if [ "$UNIQUE" -gt 0 ]; then
+            echo "::notice::contrib has $UNIQUE unique commit(s); skipping auto-sync to avoid clobbering."
+            # Nudge the open landing PR that it needs a rebase.
+            PR=$(gh pr list --head contrib --base main --state open \
+              --json number --jq '.[0].number // empty')
+            if [ -n "$PR" ]; then
+              gh pr comment "$PR" --body \
+                "\`main\` has moved ahead and \`contrib\` has unmerged commits, so automatic sync was skipped. Please rebase \`contrib\` onto \`main\`."
+            fi
+            exit 0
+          fi
+
+          # Safe to fast-forward.
+          git push origin origin/main:contrib
+          echo "contrib fast-forwarded to main."

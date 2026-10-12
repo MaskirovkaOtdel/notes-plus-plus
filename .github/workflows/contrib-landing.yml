@@ -1,0 +1,73 @@
+# ============================================================================
+# Contrib landing zone
+# ============================================================================
+# Whenever anything lands on `contrib` (a contained third-party push or a
+# retargeted PR), keep a single rolling PR from `contrib` -> `main` open and
+# up to date. This is the one place the owner reviews third-party work.
+# ============================================================================
+
+name: Contrib landing
+
+on:
+  push:
+    branches: [contrib]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: contrib-landing
+  cancel-in-progress: false
+
+jobs:
+  landing-pr:
+    name: ensure contrib -> main PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install GitHub CLI context
+        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+
+      - name: Build commit summary
+        id: summary
+        run: |
+          set -euo pipefail
+          COUNT=$(git rev-list --count origin/main..origin/contrib 2>/dev/null || echo 0)
+          {
+            echo "count=$COUNT"
+            echo "body<<EOF"
+            echo "## Contrib landing zone"
+            echo
+            echo "Third-party changes ready for review, **$COUNT** commit(s) ahead of \`main\`."
+            echo
+            echo "### Commits"
+            git log --oneline origin/main..origin/contrib | head -n 50
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update the rolling PR
+        if: steps.summary.outputs.count != '0'
+        env:
+          PR_BODY: ${{ steps.summary.outputs.body }}
+        run: |
+          set -euo pipefail
+
+          EXISTING=$(gh pr list --head contrib --base main --state open \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --body "$PR_BODY"
+            echo "Updated existing PR #$EXISTING."
+          else
+            gh pr create \
+              --head contrib \
+              --base main \
+              --title "chore(release): merge contrib landing zone" \
+              --body "$PR_BODY" \
+              --label "third-party" || true
+            echo "Opened new contrib -> main PR."
+          fi

@@ -1,0 +1,166 @@
+# ============================================================================
+# CI — precheck every commit before it can reach main
+# ============================================================================
+# Runs lint, typecheck, unit tests with a coverage gate, a production build,
+# and Playwright end-to-end tests. This is the merge gate: a red check blocks
+# the auto-merge workflow from landing the PR.
+# ============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, contrib]
+  pull_request:
+    branches: [main, contrib]
+
+# Cancel superseded runs on the same ref to save minutes and get faster signal.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Fast static checks first so obvious breakage fails in seconds, not minutes.
+  # --------------------------------------------------------------------------
+  static:
+    name: lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  # --------------------------------------------------------------------------
+  # Unit tests + coverage gate. The gate lives in each package's vitest config
+  # (thresholds), so a coverage regression fails this job.
+  # --------------------------------------------------------------------------
+  test:
+    name: unit tests & coverage
+    runs-on: ubuntu-latest
+    needs: static
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests with coverage gate
+        run: pnpm coverage
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: "**/coverage/lcov.info"
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # --------------------------------------------------------------------------
+  # Production build + E2E against a real Postgres service container.
+  # --------------------------------------------------------------------------
+  e2e:
+    name: build & e2e
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: notespp
+          POSTGRES_PASSWORD: notespp
+          POSTGRES_DB: notespp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U notespp"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      CI: "true"
+      DATABASE_URL: postgres://notespp:notespp@localhost:5432/notespp
+      PORT: "4000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @notespp/e2e exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start API
+        run: |
+          pnpm --filter @notespp/api dev &
+          echo $! > api.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:4000/health && break
+            sleep 1
+          done
+
+      - name: Start web
+        run: |
+          pnpm --filter @notespp/web preview --port 5173 &
+          echo $! > web.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:5173/ && break
+            sleep 1
+          done
+
+      - name: Run Playwright
+        run: pnpm test:e2e
+        env:
+          WEB_URL: http://localhost:5173
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7

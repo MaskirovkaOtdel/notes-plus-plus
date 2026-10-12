@@ -1,0 +1,93 @@
+# ============================================================================
+# Auto-merge / third-party triage
+# ============================================================================
+# The branching contract:
+#
+#   * PRs authored by the repo owner (MaskirovkaOtdel) are auto-approved and
+#     auto-merged into `main` once CI is green.
+#
+#   * PRs from anyone else are contained on the `contrib` landing zone. Any
+#     third-party PR targeting `main` is retargeted to `contrib`, labeled
+#     `third-party`, and left for manual review. It is never auto-merged.
+#
+# SECURITY: this workflow runs on `pull_request_target` so it holds a write
+# token even for fork PRs. It deliberately NEVER checks out or executes the
+# PR's code — it only moves/labels/comments via the GitHub API. The actual
+# build/test of PR code happens in ci.yml under a read-only token.
+# ============================================================================
+
+name: Auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  OWNER: MaskirovkaOtdel
+
+jobs:
+  triage:
+    name: triage PR
+    runs-on: ubuntu-latest
+    # Never act on drafts.
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Install GitHub CLI context
+        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+
+      - name: Owner PR — approve and enable auto-merge
+        if: github.event.pull_request.user.login == env.OWNER
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_METHOD: squash
+        run: |
+          set -euo pipefail
+          echo "Owner PR #$PR_NUMBER — approving and enabling auto-merge."
+
+          # A PR cannot be approved by its own author. Since the owner pushes
+          # branches under their own identity, the Actions bot is a distinct
+          # reviewer and this approval is valid. If the PR is ever authored by
+          # the bot itself, this step is a no-op failure we tolerate.
+          gh pr review "$PR_NUMBER" --approve \
+            --body "Auto-approved: authored by the repository owner." \
+            || echo "::warning::Could not auto-approve (likely self-authored)."
+
+          # Enable native auto-merge; GitHub merges once all required checks
+          # and protections pass. Requires "Allow auto-merge" in repo settings.
+          gh pr merge "$PR_NUMBER" --"$MERGE_METHOD" --auto \
+            --delete-branch
+
+      - name: Third-party PR — contain on contrib landing zone
+        if: github.event.pull_request.user.login != env.OWNER
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          echo "Third-party PR #$PR_NUMBER (base: $BASE_REF) — containing."
+
+          # Retarget to the contrib landing zone if it aimed at main.
+          if [ "$BASE_REF" = "main" ]; then
+            gh pr edit "$PR_NUMBER" --base contrib
+            echo "Retargeted #$PR_NUMBER to contrib."
+          fi
+
+          gh pr edit "$PR_NUMBER" --add-label "third-party"
+
+          # Idempotent review request + notice comment.
+          gh pr comment "$PR_NUMBER" --body \
+            "Thanks for the contribution! 🙌
+
+          This PR has been routed to the \`contrib\` landing zone for review.
+          It will **not** be auto-merged. Once reviewed and approved it moves
+          into \`main\`. CI runs on \`contrib\` exactly as it does on \`main\`."
+
+          gh pr edit "$PR_NUMBER" --add-reviewer "$OWNER" || true
