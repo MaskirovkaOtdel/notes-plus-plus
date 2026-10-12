@@ -44,7 +44,7 @@ jobs:
         run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
 
       - name: Owner PR — approve and enable auto-merge
-        if: github.event.pull_request.user.login == env.OWNER
+        if: github.event.pull_request.user.login == 'MaskirovkaOtdel'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           MERGE_METHOD: squash
@@ -66,7 +66,7 @@ jobs:
             --delete-branch
 
       - name: Third-party PR — contain on contrib landing zone
-        if: github.event.pull_request.user.login != env.OWNER
+        if: github.event.pull_request.user.login != 'MaskirovkaOtdel'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}

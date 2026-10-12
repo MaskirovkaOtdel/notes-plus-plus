@@ -12,7 +12,10 @@
 # Every step is idempotent — re-running is safe.
 # ============================================================================
 
-$ErrorActionPreference = "Stop"
+# NOTE: "Continue" not "Stop". With "Stop", PowerShell treats *any* stderr
+# write from a native command (gh/git) as a terminating error — `gh repo view`
+# on a not-yet-created repo writes to stderr and would abort the whole script.
+$ErrorActionPreference = "Continue"
 $env:Path = "C:\Program Files\GitHub CLI;C:\Program Files\Git\cmd;$env:Path"
 
 $OWNER = "MaskirovkaOtdel"
@@ -80,7 +83,12 @@ Write-Host "==> Creating 'third-party' label..." -ForegroundColor Cyan
 gh label create "third-party" --color FBCA04 `
   --description "External contribution held on the contrib landing zone" 2>$null | Out-Null
 
-Write-Host "==> Creating ruleset on contrib (allow fork PRs, block force-push)..." -ForegroundColor Cyan
+Write-Host "==> Creating ruleset on contrib (block force-push + deletion)..." -ForegroundColor Cyan
+# NOTE: intentionally NO required_pull_request_reviews here. The auto-sync
+# workflow fast-forwards contrib with a direct push; requiring PRs on contrib
+# would reject that push (the Actions bot has no bypass). Containment of
+# third-party work is enforced by the workflows + main's branch protection,
+# not by contrib. contrib only needs to resist force-push and deletion.
 $ruleset = @'
 {
   "name": "protect-contrib",
@@ -89,9 +97,7 @@ $ruleset = @'
   "conditions": { "ref_name": { "include": ["refs/heads/contrib"], "exclude": [] } },
   "rules": [
     { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "required_pull_request_reviews",
-      "parameters": { "required_approving_review_count": 1 } }
+    { "type": "non_fast_forward" }
   ]
 }
 '@

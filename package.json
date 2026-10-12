@@ -20,7 +20,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,md,css,yml,yaml}\"",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "test:e2e": "playwright test",
+    "test:e2e": "pnpm --filter @notespp/e2e test",
     "coverage": "turbo coverage",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker-compose.yml down",

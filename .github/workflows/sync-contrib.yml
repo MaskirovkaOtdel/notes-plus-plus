@@ -43,7 +43,10 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git fetch origin main contrib
+          # contrib may not exist on the remote yet (first bootstrap push), so
+          # tolerate a missing ref rather than failing the whole job.
+          git fetch origin main
+          git fetch origin contrib 2>/dev/null || echo "::notice::contrib not on remote yet; nothing to sync."
 
           UNIQUE=$(git rev-list --count origin/contrib ^origin/main 2>/dev/null || echo 0)
 

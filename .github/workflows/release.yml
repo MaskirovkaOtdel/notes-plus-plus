@@ -89,6 +89,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          # An annotated tag needs a committer identity on the runner.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           # Belt-and-braces dedupe: never re-tag an existing version.
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
             echo "::notice::$VERSION already exists; skipping."
