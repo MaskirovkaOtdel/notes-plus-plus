@@ -1,0 +1,22 @@
+# TEMPORARY DIAGNOSTIC — delete after the schedule investigation concludes.
+# Purpose: prove whether GitHub's cron scheduler evaluates this repository at
+# all. If this fires but release.yml's schedule does not, the problem is in
+# release.yml; if neither fires, it is repository/account level.
+
+name: Schedule probe
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: cron probe
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: echo "probe fired: event=${{ github.event_name }} at $(date -u +%FT%TZ)"
