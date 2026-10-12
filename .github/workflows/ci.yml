@@ -128,6 +128,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Create database schema
+        run: pnpm --filter @notespp/api db:push
+
       - name: Start API
         run: |
           pnpm --filter @notespp/api dev &

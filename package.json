@@ -24,6 +24,7 @@
     "coverage": "turbo coverage",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:push": "pnpm --filter @notespp/api db:push",
     "version:check": "node scripts/version-engine.mjs --dry-run",
     "prepare": "husky"
   },
