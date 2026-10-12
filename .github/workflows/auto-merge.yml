@@ -41,7 +41,13 @@ jobs:
     if: github.event.pull_request.draft == false
     steps:
       - name: Install GitHub CLI context
-        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+        # GH_REPO tells `gh` which repository to target. This workflow
+        # deliberately never checks out code (pull_request_target security), so
+        # `gh` cannot infer the repo from a git remote — without this every
+        # `gh pr ...` call fails with "not a git repository".
+        run: |
+          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          echo "GH_REPO=${{ github.repository }}" >> "$GITHUB_ENV"
 
       - name: Owner PR — approve and enable auto-merge
         if: github.event.pull_request.user.login == 'MaskirovkaOtdel'
