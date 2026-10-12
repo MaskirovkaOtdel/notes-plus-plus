@@ -1,0 +1,220 @@
+﻿openapi: "3.0.3"
+info:
+  title: Notes++ API
+  description: CRUD API for the Notes++ notes application
+  version: "0.1.0"
+  contact:
+    name: MaskirovkaOtdel
+servers:
+  - url: http://localhost:4000
+    description: Development server
+paths:
+  /notes:
+    get:
+      summary: List notes
+      operationId: listNotes
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            description: Optional search term to filter notes by title/body/tags
+          required: false
+          example: ""
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            description: Maximum number of notes to return
+            default: 20
+            required: false
+          example: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            description: Number of notes to skip
+            default: 0
+            required: false
+          example: 0
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Note"
+                  total:
+                    type: integer
+                    description: Total number of notes matching the query
+                  limit:
+                    type: integer
+                    description: The limit parameter used
+                  offset:
+                    type: integer
+                    description: The offset parameter used
+        "400":
+          description: Bad request - invalid query parameters
+    post:
+      summary: Create a note
+      operationId: createNote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNote"
+      responses:
+        "201":
+          description: Note created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "400":
+          description: Validation error - request body fails schema validation
+    /notes/{id}:
+      get:
+        summary: Get a single note
+        operationId: getNote
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: string
+              description: The unique note ID
+        responses:
+          "200":
+            description: Successful response
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Note"
+          "404":
+            description: Note not found
+      patch:
+        summary: Update a note
+        operationId: updateNote
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: string
+              description: The unique note ID
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateNote"
+        responses:
+          "200":
+            description: Note updated successfully
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Note"
+          "404":
+            description: Note not found
+          "400":
+            description: Validation error - request body fails schema validation
+      delete:
+        summary: Delete a note
+        operationId: deleteNote
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: string
+              description: The unique note ID
+        responses:
+          "204":
+            description: Note deleted successfully
+          "404":
+            description: Note not found
+components:
+  schemas:
+    Note:
+      type: object
+      required: [id, title, body, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          description: The unique identifier for the note
+          example: "c74f9704-b9a3-45cb-887b-7fec46b47de1"
+        title:
+          type: string
+          description: The title of the note
+          maxLength: 200
+        body:
+          type: string
+          description: The body/content of the note
+        tags:
+          type: array
+          items:
+            type: string
+          description: Optional tags associated with the note
+          default: []
+        created_at:
+          type: string
+          format: date-time
+          description: When the note was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the note was last updated
+    CreateNote:
+      type: object
+      required: [title, body, tags]
+      properties:
+        title:
+          type: string
+          description: The title of the new note
+          maxLength: 200
+        body:
+          type: string
+          description: The content/body of the new note
+        tags:
+          type: array
+          items:
+            type: string
+          description: Optional tags for the new note
+          default: []
+    ListNotesQuery:
+      type: object
+      properties:
+        search:
+          type: string
+          description: Optional search term
+          maxLength: 100
+        limit:
+          type: integer
+          description: Maximum number of records to return
+          default: 20
+        offset:
+          type: integer
+          description: Number of records to skip
+          default: 0
+    UpdateNote:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Optional new title
+          maxLength: 200
+        body:
+          type: string
+          description: Optional new body content
+        tags:
+          type: array
+          items:
+            type: string
+          description: Optional new tags
