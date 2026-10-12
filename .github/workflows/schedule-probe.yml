@@ -19,4 +19,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Report
-        run: echo "probe fired: event=${{ github.event_name }} at $(date -u +%FT%TZ)"
+        run: |
+          echo "probe fired: event=${{ github.event_name }} at $(date -u +%FT%TZ)"
