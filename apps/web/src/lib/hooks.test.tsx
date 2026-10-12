@@ -2,10 +2,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { makeListResponse, makeNote, stubFetch } from "../test-utils.js";
+import {
+  makeHealth,
+  makeListResponse,
+  makeNote,
+  stubFetch,
+  stubFetchByRoute,
+} from "../test-utils.js";
 import {
   useCreateNote,
   useDeleteNote,
+  useHealth,
   useNote,
   useNotes,
   useUpdateNote,
@@ -32,6 +39,26 @@ describe("useNotes", () => {
     const { result } = renderHook(() => useNotes(), { wrapper: wrapper() });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("useHealth", () => {
+  it("resolves with health and version", async () => {
+    stubFetchByRoute({ "/health": { body: makeHealth({ version: "1.2.3" }) } });
+    const { result } = renderHook(() => useHealth(), { wrapper: wrapper() });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.version).toBe("1.2.3");
+    expect(result.current.data?.status).toBe("ok");
+  });
+
+  it("retries once then surfaces errors", async () => {
+    stubFetchByRoute({
+      "/health": { status: 503, body: { error: "degraded", code: "UNAVAILABLE" } },
+    });
+    const { result } = renderHook(() => useHealth(), { wrapper: wrapper() });
+
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
   });
 });
 

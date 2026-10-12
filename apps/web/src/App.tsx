@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Button, NoteCard } from "@notespp/ui";
-import { useCreateNote, useNotes } from "./lib/hooks.js";
+import { useCreateNote, useHealth, useNotes } from "./lib/hooks.js";
 
 /** Main application shell: note list + create action. */
 export function App() {
   const [search, setSearch] = useState("");
   const { data, isPending, isError, refetch } = useNotes(search ? { search } : {});
   const createNote = useCreateNote();
+  const health = useHealth();
 
   const handleCreate = async () => {
     await createNote.mutateAsync({
@@ -64,6 +65,9 @@ export function App() {
 
       <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
         Notes++ — offline-capable notes
+        {health.data ? (
+          <span data-testid="app-version"> · v{health.data.version}</span>
+        ) : null}
       </footer>
     </div>
   );
