@@ -5,13 +5,30 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import type { CreateNote, ListNotesResponse, Note, UpdateNote } from "@notespp/shared";
+import type {
+  CreateNote,
+  Health,
+  ListNotesResponse,
+  Note,
+  UpdateNote,
+} from "@notespp/shared";
 import { api } from "./api.js";
 
 export const queryKeys = {
+  health: ["health"] as const,
   notes: (params: Record<string, unknown>) => ["notes", params] as const,
   note: (id: string) => ["note", id] as const,
 };
+
+/** Fetch API health/version. Cached 5 min — it rarely changes. */
+export function useHealth(): UseQueryResult<Health> {
+  return useQuery({
+    queryKey: queryKeys.health,
+    queryFn: () => api.health(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+}
 
 /** Fetch a page of notes. */
 export function useNotes(
