@@ -49,22 +49,41 @@ jobs:
           echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
           echo "GH_REPO=${{ github.repository }}" >> "$GITHUB_ENV"
 
-      - name: Owner PR — approve and enable auto-merge
+      - name: Owner PR — approve
+        if: github.event.pull_request.user.login == 'MaskirovkaOtdel'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          echo "Owner PR #$PR_NUMBER — approving."
+
+          # A PR cannot be approved by its own author. Since the owner pushes
+          # branches under their own identity, the Actions bot (GH_TOKEN from
+          # GITHUB_ENV) is a distinct reviewer and this approval is valid. This
+          # step deliberately keeps the bot token — using the owner's PAT here
+          # would be a self-approval, which GitHub rejects.
+          gh pr review "$PR_NUMBER" --approve \
+            --body "Auto-approved: authored by the repository owner." \
+            || echo "::warning::Could not auto-approve (likely self-authored)."
+
+      - name: Owner PR — enable auto-merge
         if: github.event.pull_request.user.login == 'MaskirovkaOtdel'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           MERGE_METHOD: squash
+          # Merge under the OWNER's identity, not the Actions bot. GitHub
+          # silently suppresses push events caused by GITHUB_TOKEN, so a
+          # bot-attributed merge would NOT trigger CI / Release / Sync-contrib
+          # on main. The PAT restores normal push events. Falls back to the
+          # bot token if the secret is missing (merge still works, but the
+          # downstream automations will not fire).
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          HAVE_PAT: ${{ secrets.AUTO_MERGE_TOKEN != '' }}
         run: |
           set -euo pipefail
-          echo "Owner PR #$PR_NUMBER — approving and enabling auto-merge."
-
-          # A PR cannot be approved by its own author. Since the owner pushes
-          # branches under their own identity, the Actions bot is a distinct
-          # reviewer and this approval is valid. If the PR is ever authored by
-          # the bot itself, this step is a no-op failure we tolerate.
-          gh pr review "$PR_NUMBER" --approve \
-            --body "Auto-approved: authored by the repository owner." \
-            || echo "::warning::Could not auto-approve (likely self-authored)."
+          if [ "$HAVE_PAT" != "true" ]; then
+            echo "::warning::AUTO_MERGE_TOKEN is not set — merging as the bot. Downstream push-triggered workflows will NOT run."
+          fi
 
           # Enable native auto-merge; GitHub merges once all required checks
           # and protections pass. Requires "Allow auto-merge" in repo settings.
