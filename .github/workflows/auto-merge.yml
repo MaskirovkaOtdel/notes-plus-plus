@@ -63,7 +63,6 @@ jobs:
           # step deliberately keeps the bot token — using the owner's PAT here
           # would be a self-approval, which GitHub rejects.
           gh pr review "$PR_NUMBER" --approve \
-            --body "Auto-approved: authored by the repository owner." \
             || echo "::warning::Could not auto-approve (likely self-authored)."
 
       - name: Owner PR — enable auto-merge

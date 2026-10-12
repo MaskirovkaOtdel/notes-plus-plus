@@ -23,18 +23,10 @@ name: Release
 on:
   push:
     branches: [main]
-  schedule:
-    # Twice-hourly flush so a release that became eligible during a cooldown
-    # window is cut shortly after it expires, without manual intervention.
-    # Minutes :17/:47 deliberately avoid the top of the hour: GitHub documents
-    # the start of every hour as a high-load window in which queued scheduled
-    # jobs may be dropped. Changing this cron is also the documented way to
-    # reactivate a scheduled workflow that GitHub has gone quiet on.
-    - cron: "17,47 * * * *"
   workflow_dispatch:
     inputs:
       force:
-        description: "Bypass cooldown and cap (use for hotfixes only)"
+        description: "Force cut release (bypass gate checks)"
         type: boolean
         default: false
 

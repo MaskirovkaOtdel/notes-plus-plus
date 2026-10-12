@@ -39,10 +39,10 @@ import { appendFileSync } from "node:fs";
 const CONFIG = {
   /** Prefix for tags, e.g. "v1.2.3" */
   tagPrefix: "v",
-  /** Hours that must elapse between two automatic (non-forced) releases. */
-  cooldownHours: 6,
-  /** Maximum automatic releases within a rolling 24h window. */
-  maxReleasesPer24h: 3,
+  /** Hours that must elapse between two automatic (non-forced) releases. 0 = disabled. */
+  cooldownHours: 0,
+  /** Maximum automatic releases within a rolling 24h window. Infinity = unconstrained. */
+  maxReleasesPer24h: Number.POSITIVE_INFINITY,
   /** Commit types that warrant a patch release. */
   patchTypes: new Set(["fix", "perf", "revert"]),
   /** Commit types that warrant a minor release. */
