@@ -3,12 +3,13 @@
 # ============================================================================
 # The branching contract:
 #
-#   * PRs authored by the repo owner (MaskirovkaOtdel) are auto-approved and
-#     auto-merged into `main` once CI is green.
+#   * PRs authored by the repo owner (MaskirovkaOtdel) are configured for
+#     auto-merge into `main` via rebase (fast-forward) once CI is green.
 #
 #   * PRs from anyone else are contained on the `contrib` landing zone. Any
 #     third-party PR targeting `main` is retargeted to `contrib`, labeled
-#     `third-party`, and left for manual review. It is never auto-merged.
+#     `third-party`, and assigned to the owner for manual review. It is never
+#     auto-merged.
 #
 # SECURITY: this workflow runs on `pull_request_target` so it holds a write
 # token even for fork PRs. It deliberately NEVER checks out or executes the
@@ -41,53 +42,31 @@ jobs:
     if: github.event.pull_request.draft == false
     steps:
       - name: Install GitHub CLI context
-        # GH_REPO tells `gh` which repository to target. This workflow
-        # deliberately never checks out code (pull_request_target security), so
-        # `gh` cannot infer the repo from a git remote — without this every
-        # `gh pr ...` call fails with "not a git repository".
         run: |
           echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
           echo "GH_REPO=${{ github.repository }}" >> "$GITHUB_ENV"
 
-      - name: Owner PR — approve
+      - name: Owner PR — approve and enable auto-merge
         if: github.event.pull_request.user.login == 'MaskirovkaOtdel'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          echo "Owner PR #$PR_NUMBER — approving."
+          echo "Owner PR #$PR_NUMBER (head: $HEAD_REF) — configuring auto-merge."
 
-          # A PR cannot be approved by its own author. Since the owner pushes
-          # branches under their own identity, the Actions bot (GH_TOKEN from
-          # GITHUB_ENV) is a distinct reviewer and this approval is valid. This
-          # step deliberately keeps the bot token — using the owner's PAT here
-          # would be a self-approval, which GitHub rejects.
+          # Attempt bot approval (distinct reviewer) if required
           gh pr review "$PR_NUMBER" --approve \
-            || echo "::warning::Could not auto-approve (likely self-authored)."
+            || echo "::notice::Auto-approval skipped or unnecessary."
 
-      - name: Owner PR — enable auto-merge
-        if: github.event.pull_request.user.login == 'MaskirovkaOtdel'
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          MERGE_METHOD: squash
-          # Merge under the OWNER's identity, not the Actions bot. GitHub
-          # silently suppresses push events caused by GITHUB_TOKEN, so a
-          # bot-attributed merge would NOT trigger CI / Release / Sync-contrib
-          # on main. The PAT restores normal push events. Falls back to the
-          # bot token if the secret is missing (merge still works, but the
-          # downstream automations will not fire).
-          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
-          HAVE_PAT: ${{ secrets.AUTO_MERGE_TOKEN != '' }}
-        run: |
-          set -euo pipefail
-          if [ "$HAVE_PAT" != "true" ]; then
-            echo "::warning::AUTO_MERGE_TOKEN is not set — merging as the bot. Downstream push-triggered workflows will NOT run."
+          # Enable native auto-merge with rebase to preserve commit SHAs
+          # Only delete branch if it is a disposable feature branch, never the contrib branch
+          DELETE_FLAG=""
+          if [ "$HEAD_REF" != "contrib" ]; then
+            DELETE_FLAG="--delete-branch"
           fi
 
-          # Enable native auto-merge; GitHub merges once all required checks
-          # and protections pass. Requires "Allow auto-merge" in repo settings.
-          gh pr merge "$PR_NUMBER" --"$MERGE_METHOD" --auto \
-            --delete-branch
+          gh pr merge "$PR_NUMBER" --rebase --auto $DELETE_FLAG
 
       - name: Third-party PR — contain on contrib landing zone
         if: github.event.pull_request.user.login != 'MaskirovkaOtdel'
@@ -111,7 +90,7 @@ jobs:
             "Thanks for the contribution! 🙌
 
           This PR has been routed to the \`contrib\` landing zone for review.
-          It will **not** be auto-merged. Once reviewed and approved it moves
+          It will **not** be auto-merged. Once reviewed and approved by @$OWNER, it moves
           into \`main\`. CI runs on \`contrib\` exactly as it does on \`main\`."
 
           gh pr edit "$PR_NUMBER" --add-reviewer "$OWNER" || true
