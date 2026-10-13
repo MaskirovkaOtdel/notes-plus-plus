@@ -67,6 +67,6 @@ jobs:
             exit 0
           fi
 
-          # Safe to fast-forward
-          git push origin origin/main:contrib
-          echo "contrib fast-forwarded to main."
+          # Safe to sync: force-align contrib to main so they share the exact same commit
+          git push origin origin/main:contrib --force
+          echo "contrib synchronized with main at $(git rev-parse --short origin/main)."
