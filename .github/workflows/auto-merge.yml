@@ -11,6 +11,10 @@
 #     `third-party`, and assigned to the owner for manual review. It is never
 #     auto-merged.
 #
+#   * When any PR (owner auto-merge or manually approved 3rd-party) merges
+#     into `main`, the post_merge job dispatches Release and Sync-contrib
+#     automations so tags, release notes, and branch syncing stay 100% current.
+#
 # SECURITY: this workflow runs on `pull_request_target` so it holds a write
 # token even for fork PRs. It deliberately NEVER checks out or executes the
 # PR's code — it only moves/labels/comments via the GitHub API. The actual
@@ -21,9 +25,10 @@ name: Auto-merge
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -38,8 +43,8 @@ jobs:
   triage:
     name: triage PR
     runs-on: ubuntu-latest
-    # Never act on drafts.
-    if: github.event.pull_request.draft == false
+    # Never act on drafts or closed PRs.
+    if: github.event.action != 'closed' && github.event.pull_request.draft == false
     steps:
       - name: Install GitHub CLI context
         run: |
@@ -94,3 +99,21 @@ jobs:
           into \`main\`. CI runs on \`contrib\` exactly as it does on \`main\`."
 
           gh pr edit "$PR_NUMBER" --add-reviewer "$OWNER" || true
+
+  post_merge:
+    name: post-merge release & sync
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    steps:
+      - name: Install GitHub CLI context
+        run: |
+          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          echo "GH_REPO=${{ github.repository }}" >> "$GITHUB_ENV"
+
+      - name: Dispatch Release & Sync automations
+        run: |
+          set -euo pipefail
+          echo "PR #${{ github.event.pull_request.number }} successfully merged into main."
+          echo "Triggering Release and Sync-contrib..."
+          gh workflow run release.yml
+          gh workflow run sync-contrib.yml
