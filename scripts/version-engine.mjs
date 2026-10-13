@@ -269,6 +269,13 @@ const gates = {
   dedupe: { passed: true, detail: "ok" },
 };
 
+// A release is "forced" when a commit carries the marker, or the caller passed
+// --force. Hotfix markers short-circuit the gates.
+const forcedByCommit = releaseWorthy.some((c) =>
+  /\[release-now\]|\[hotfix\]/i.test(c.body),
+);
+const FORCE = FORCE_FLAG || forcedByCommit;
+
 // --- Gate: path -------------------------------------------------------------
 // Determine changed files since last tag and test if they are all "meta".
 if (lastTagCommit) {
@@ -284,10 +291,12 @@ if (lastTagCommit) {
       CONFIG.metaPathFiles.includes(f);
     const allMeta = changedFiles.every(isMeta);
     gates.path = {
-      passed: !allMeta,
-      detail: allMeta
-        ? `only meta files changed (${changedFiles.length} files)`
-        : `${changedFiles.filter((f) => !isMeta(f)).length} source files changed`,
+      passed: FORCE || !allMeta,
+      detail: FORCE
+        ? "forced release bypass"
+        : allMeta
+          ? `only meta files changed (${changedFiles.length} files)`
+          : `${changedFiles.filter((f) => !isMeta(f)).length} source files changed`,
     };
   }
 } else {
@@ -306,13 +315,6 @@ const latestReleaseTime = lastTag
 const hoursSinceRelease = latestReleaseTime
   ? (Date.now() / 1000 - latestReleaseTime) / 3600
   : Infinity;
-
-// A release is "forced" when a commit carries the marker, or the caller passed
-// --force. Hotfix markers short-circuit the cooldown.
-const forcedByCommit = releaseWorthy.some((c) =>
-  /\[release-now\]|\[hotfix\]/i.test(c.body),
-);
-const FORCE = FORCE_FLAG || forcedByCommit;
 
 if (!FORCE && hoursSinceRelease < CONFIG.cooldownHours) {
   gates.cooldown = {
