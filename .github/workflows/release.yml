@@ -1,21 +1,19 @@
 # ============================================================================
-# Release — versioned tagging with anti-overflow gates
+# Release — versioned tagging & release notes
 # ============================================================================
-# Runs the version engine (scripts/version-engine.mjs) to decide whether a
-# release should be cut and what the next version is, then creates the tag
-# and a GitHub Release with generated notes.
+# Runs the version engine (scripts/version-engine.mjs) to evaluate Conventional
+# Commits since the last release tag:
+#   * fix: / perf: / revert:  -> X.X.1 -> X.X.2 (patch)
+#   * feat:                   -> X.1.X -> X.2.X (minor)
+#   * BREAKING CHANGE / !:    -> 1.X.X -> 2.X.X (major)
 #
-# Anti-overflow guarantees (all enforced in the engine, not here):
-#   1. Only feat / fix / perf / revert / BREAKING commits produce a release.
-#   2. Changes touching only docs/meta/config are ignored.
-#   3. A cooldown window batches rapid merges into a single release.
-#   4. A rolling 24h cap prevents runaway tag floods.
-#   5. Duplicate versions are never re-created.
+# Generates structured release notes via scripts/release-notes.mjs and creates
+# a GitHub Release and git tag.
 #
 # Triggers:
-#   - push to main   : normal path, subject to all gates
-#   - schedule (hourly): flushes anything waiting out its cooldown
-#   - workflow_dispatch: manual, with an optional "force" input
+#   - push to main
+#   - pull_request closed & merged into main
+#   - workflow_dispatch (manual on-demand with optional force input)
 # ============================================================================
 
 name: Release
@@ -23,6 +21,9 @@ name: Release
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [closed]
   workflow_dispatch:
     inputs:
       force:
@@ -41,10 +42,11 @@ jobs:
   release:
     name: compute version & release
     runs-on: ubuntu-latest
-    # A scheduled run only needs to act when something is actually pending.
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -58,9 +60,7 @@ jobs:
         run: |
           set -uo pipefail
 
-          # The engine exits 0 to release, 2 to skip (a deliberate decision —
-          # cooldown, cap, dedupe, or no release-worthy commits). Only a real
-          # crash (any other code) should fail the job.
+          # The engine exits 0 to release, 2 to skip.
           set +e
           node scripts/version-engine.mjs --github-output $FORCE
           code=$?
@@ -103,7 +103,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Belt-and-braces dedupe: never re-tag an existing version.
+          # Dedupe: never re-tag an existing version.
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
             echo "::notice::$VERSION already exists; skipping."
             exit 0

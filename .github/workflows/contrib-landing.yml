@@ -1,9 +1,13 @@
 # ============================================================================
 # Contrib landing zone
 # ============================================================================
-# Whenever anything lands on `contrib` (a contained third-party push or a
-# retargeted PR), keep a single rolling PR from `contrib` -> `main` open and
-# up to date. This is the one place the owner reviews third-party work.
+# Whenever commits land on `contrib`:
+#   * If all unmerged commits were authored by the repository owner
+#     (MaskirovkaOtdel), keep a rolling PR open and enable auto-merge (rebase)
+#     so changes land directly in `main` once CI passes.
+#   * If any commits belong to a third party, keep the rolling PR open, label
+#     it `third-party`, assign MaskirovkaOtdel for manual review, and NEVER
+#     auto-merge.
 # ============================================================================
 
 name: Contrib landing
@@ -20,6 +24,10 @@ concurrency:
   group: contrib-landing
   cancel-in-progress: false
 
+env:
+  OWNER: MaskirovkaOtdel
+  OWNER_EMAIL: thod.efstathiadis@gmail.com
+
 jobs:
   landing-pr:
     name: ensure contrib -> main PR
@@ -30,29 +38,60 @@ jobs:
           fetch-depth: 0
 
       - name: Install GitHub CLI context
-        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+        run: |
+          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          echo "GH_REPO=${{ github.repository }}" >> "$GITHUB_ENV"
 
-      - name: Build commit summary
-        id: summary
+      - name: Analyze commits
+        id: analysis
         run: |
           set -euo pipefail
+          git fetch origin main contrib
+
           COUNT=$(git rev-list --count origin/main..origin/contrib 2>/dev/null || echo 0)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "contrib is already in sync with main; nothing to do."
+            exit 0
+          fi
+
+          # Check authors of all unmerged commits
+          AUTHORS=$(git log --format="%an <%ae>" origin/main..origin/contrib | sort -u)
+          echo "Authors in range:"
+          echo "$AUTHORS"
+
+          # Determine if strictly owner commits
+          IS_OWNER="true"
+          while IFS= read -r line; do
+            if [[ "$line" != *"$OWNER"* ]] && [[ "$line" != *"$OWNER_EMAIL"* ]]; then
+              IS_OWNER="false"
+              break
+            fi
+          done <<< "$AUTHORS"
+
+          echo "is_owner=$IS_OWNER" >> "$GITHUB_OUTPUT"
+
           {
-            echo "count=$COUNT"
             echo "body<<EOF"
             echo "## Contrib landing zone"
             echo
-            echo "Third-party changes ready for review, **$COUNT** commit(s) ahead of \`main\`."
+            if [ "$IS_OWNER" = "true" ]; then
+              echo "Automated promotion from \`contrib\` to \`main\` for owner changes (**$COUNT** commit(s) ahead)."
+            else
+              echo "Third-party changes ready for review (**$COUNT** commit(s) ahead of \`main\`)."
+            fi
             echo
             echo "### Commits"
             git log --oneline origin/main..origin/contrib | head -n 50
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create or update the rolling PR
-        if: steps.summary.outputs.count != '0'
+      - name: Create or update rolling PR
+        if: steps.analysis.outputs.count != '0'
         env:
-          PR_BODY: ${{ steps.summary.outputs.body }}
+          IS_OWNER: ${{ steps.analysis.outputs.is_owner }}
+          PR_BODY: ${{ steps.analysis.outputs.body }}
         run: |
           set -euo pipefail
 
@@ -60,14 +99,25 @@ jobs:
             --json number --jq '.[0].number // empty')
 
           if [ -n "$EXISTING" ]; then
-            gh pr edit "$EXISTING" --body "$PR_BODY"
-            echo "Updated existing PR #$EXISTING."
+            PR_NUM="$EXISTING"
+            gh pr edit "$PR_NUM" --body "$PR_BODY"
+            echo "Updated existing PR #$PR_NUM."
           else
-            gh pr create \
+            PR_NUM=$(gh pr create \
               --head contrib \
               --base main \
               --title "chore(release): merge contrib landing zone" \
-              --body "$PR_BODY" \
-              --label "third-party" || true
-            echo "Opened new contrib -> main PR."
+              --body "$PR_BODY")
+            echo "Opened new contrib -> main PR: $PR_NUM."
+            # Extract number if URL returned
+            PR_NUM=$(echo "$PR_NUM" | grep -o '[0-9]*$' || echo "$PR_NUM")
+          fi
+
+          if [ "$IS_OWNER" = "true" ]; then
+            echo "Owner-authored changes detected. Enabling auto-merge (rebase)..."
+            gh pr merge "$PR_NUM" --rebase --auto || true
+          else
+            echo "Third-party changes detected. Labeling and requesting review from $OWNER..."
+            gh pr edit "$PR_NUM" --add-label "third-party"
+            gh pr edit "$PR_NUM" --add-reviewer "$OWNER" || true
           fi

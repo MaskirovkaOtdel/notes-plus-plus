@@ -2,8 +2,7 @@
 # Auto-sync: main -> contrib
 # ============================================================================
 # After every merge into `main`, fast-forward the `contrib` landing zone so
-# third parties always build against current code and the landing PR stays
-# small.
+# it shares the exact same commit with `main` and stays up to date.
 #
 # Guard: if `contrib` holds unique commits that are not yet in `main` (an
 # unmerged third-party contribution), we do NOT clobber them. Instead we leave
@@ -15,6 +14,10 @@ name: Sync contrib
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [closed]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,13 +31,17 @@ jobs:
   sync:
     name: fast-forward contrib
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Install GitHub CLI context
-        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+        run: |
+          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          echo "GH_REPO=${{ github.repository }}" >> "$GITHUB_ENV"
 
       - name: Sync contrib to main (guarded)
         run: |
@@ -43,8 +50,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # contrib may not exist on the remote yet (first bootstrap push), so
-          # tolerate a missing ref rather than failing the whole job.
+          # Fetch both branches
           git fetch origin main
           git fetch origin contrib 2>/dev/null || echo "::notice::contrib not on remote yet; nothing to sync."
 
@@ -52,7 +58,6 @@ jobs:
 
           if [ "$UNIQUE" -gt 0 ]; then
             echo "::notice::contrib has $UNIQUE unique commit(s); skipping auto-sync to avoid clobbering."
-            # Nudge the open landing PR that it needs a rebase.
             PR=$(gh pr list --head contrib --base main --state open \
               --json number --jq '.[0].number // empty')
             if [ -n "$PR" ]; then
@@ -62,6 +67,6 @@ jobs:
             exit 0
           fi
 
-          # Safe to fast-forward.
+          # Safe to fast-forward
           git push origin origin/main:contrib
           echo "contrib fast-forwarded to main."
