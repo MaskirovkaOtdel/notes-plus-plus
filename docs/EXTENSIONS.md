@@ -98,6 +98,11 @@ registration order; an absent slot renders nothing.
 **Current slots:** `noteToolbar` — rendered in the note detail view.
 New slots are added only when a real consumer exists (YAGNI).
 
+Toolbar contributions receive `refreshNote?: () => void`. Call it after a
+successful out-of-band write (e.g. restoring a version) — the host then
+refetches the note and list caches, so the UI reflects the change without
+the contribution knowing anything about the host's data layer.
+
 ## The reference extension
 
 `packages/ext-word-count` is the canonical example, exercising both seams

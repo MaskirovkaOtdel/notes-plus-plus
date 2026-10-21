@@ -53,6 +53,13 @@ export interface ApiExtension<TRepo = unknown, TApp = unknown> {
 /** Props handed to a note toolbar contribution. */
 export interface NoteToolbarProps<TNote> {
   note: TNote;
+  /**
+   * Ask the host to refresh this note (and the list) from the server.
+   * Contributions that mutate the note out-of-band — e.g. restoring a
+   * historical version — call this after a successful write so the host's
+   * caches catch up without knowing about the contribution's internals.
+   */
+  refreshNote?: () => void;
 }
 
 /**
