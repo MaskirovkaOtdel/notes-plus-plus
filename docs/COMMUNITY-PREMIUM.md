@@ -29,7 +29,8 @@ The exact premium lineup is intentionally not documented here.
 2. **Shared improvements land here first.** When premium needs a change to
    community-owned code, that change must be a _generic extension point_
    (feature flag, registration hook, plugin seam) that benefits this edition
-   on its own — then it flows into premium via sync.
+   on its own — then it flows into premium via sync. The extension registry
+   documented in [EXTENSIONS.md](./EXTENSIONS.md) is the canonical example.
 3. **This repo must always build, test, and run standalone.** Premium is an
    overlay (`@notespp/premium-*` packages), never a dependency.
 
