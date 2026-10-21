@@ -68,3 +68,45 @@ test.describe("extension seam", () => {
     await expect(page.getByTestId("word-count-chip")).toHaveText(/0 words/);
   });
 });
+
+/**
+ * Lifecycle: the app can modify its own notes (Phase 3). Full journey —
+ * edit a note, verify the change in the list, delete it with the inline
+ * confirmation, and confirm it is gone. The delete confirmation is inline
+ * (no window.confirm), so no dialog handling is needed here.
+ */
+test.describe("note lifecycle", () => {
+  test("edits a note, verifies it in the list, then deletes it", async ({
+    page,
+    request,
+  }) => {
+    // Seed a note directly through the API for determinism.
+    const created = await request.post("/notes", {
+      data: { title: "Lifecycle note", body: "before edit", tags: ["seed"] },
+    });
+    expect(created.ok()).toBeTruthy();
+
+    await page.goto("/");
+    await page.getByText("Lifecycle note").first().click();
+
+    // Edit the body and save.
+    await page.getByRole("button", { name: "Edit" }).click();
+    await page.getByLabel("Body").fill("after edit in e2e");
+    await page.getByRole("button", { name: "Save" }).click();
+
+    // Detail view shows the persisted body.
+    await expect(page.getByText("after edit in e2e")).toBeVisible();
+
+    // Back to the list: the change is reflected there too.
+    await page.getByRole("button", { name: /Back/ }).click();
+    await expect(page.getByText("after edit in e2e")).toBeVisible();
+
+    // Reopen and delete via the two-step inline confirmation.
+    await page.getByText("Lifecycle note").first().click();
+    await page.getByRole("button", { name: "Delete" }).click();
+    await page.getByRole("button", { name: "Yes, delete" }).click();
+
+    // Back on the list, and the note is gone.
+    await expect(page.getByText("Lifecycle note")).toHaveCount(0);
+  });
+});

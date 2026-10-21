@@ -9,6 +9,7 @@ import {
   makeListResponse,
   makeNote,
   stubFetchByRoute,
+  stubNotesServer,
 } from "./test-utils.js";
 
 function renderApp() {
@@ -124,5 +125,40 @@ describe("App", () => {
       expect(screen.getByRole("button", { name: /Back/ })).toBeInTheDocument(),
     );
     expect(screen.getByTestId("word-count-chip")).toHaveTextContent("3 words");
+  });
+
+  it("runs the full lifecycle: open → edit → verify in list → delete → gone", async () => {
+    const user = userEvent.setup();
+    stubNotesServer([makeNote({ title: "Lifecycle", body: "before edit" })]);
+    renderApp();
+
+    // Open the detail view.
+    await waitFor(() => expect(screen.getByText("Lifecycle")).toBeInTheDocument());
+    await user.click(screen.getByText("Lifecycle"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument(),
+    );
+
+    // Edit the body and save.
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Body"));
+    await user.type(screen.getByLabelText("Body"), "after edit");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.getByText("after edit")).toBeInTheDocument());
+
+    // Back to the list: the persisted change is reflected.
+    await user.click(screen.getByRole("button", { name: /Back/ }));
+    await waitFor(() => expect(screen.getByText("after edit")).toBeInTheDocument());
+
+    // Reopen and delete with the inline confirmation.
+    await user.click(screen.getByText("Lifecycle"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Yes, delete" }));
+
+    // Back on the list, and the note is gone.
+    await waitFor(() => expect(screen.getByText(/No notes yet/)).toBeInTheDocument());
   });
 });

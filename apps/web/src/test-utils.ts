@@ -79,3 +79,64 @@ export function stubFetchByRoute(routes: Record<string, StubResponse>) {
   vi.stubGlobal("fetch", fn);
   return fn;
 }
+
+/**
+ * Stateful single-server stub for the notes REST surface (list, create,
+ * get, update, delete). Mutations actually mutate the backing array, so
+ * refetches after a save/delete reflect the change — exactly what the
+ * lifecycle (edit → verify → delete) tests need.
+ */
+export function stubNotesServer(initial: Note[]) {
+  const state = { notes: [...initial] };
+  const notFound = { status: 404, body: { error: "not found", code: "NOT_FOUND" } };
+
+  const fn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    const idMatch = url.match(/^\/notes\/([^/?]+)$/);
+    if (idMatch) {
+      const id = idMatch[1];
+      const note = state.notes.find((n) => n.id === id);
+      if (method === "GET") {
+        return toResponse(note ? { body: note } : notFound);
+      }
+      if (method === "PATCH") {
+        if (!note) return toResponse(notFound);
+        const patch = JSON.parse(String(init?.body)) as Partial<Note>;
+        const updated: Note = {
+          ...note,
+          ...patch,
+          updatedAt: "2026-01-03T00:00:00.000Z",
+        };
+        state.notes = state.notes.map((n) => (n.id === id ? updated : n));
+        return toResponse({ body: updated });
+      }
+      if (method === "DELETE") {
+        if (!note) return toResponse(notFound);
+        state.notes = state.notes.filter((n) => n.id !== id);
+        return toResponse({ status: 204, body: undefined });
+      }
+    }
+
+    if (url.startsWith("/health")) {
+      return toResponse({ body: makeHealth() });
+    }
+
+    if (url.startsWith("/notes")) {
+      if (method === "GET") return toResponse({ body: makeListResponse(state.notes) });
+      if (method === "POST") {
+        const created = makeNote({
+          ...JSON.parse(String(init?.body)),
+          id: `note-${state.notes.length + 1}`,
+        });
+        state.notes = [...state.notes, created];
+        return toResponse({ body: created });
+      }
+    }
+
+    throw new Error(`stubNotesServer: no route matched ${method} ${url}`);
+  });
+  vi.stubGlobal("fetch", fn);
+  return { state, fn };
+}
