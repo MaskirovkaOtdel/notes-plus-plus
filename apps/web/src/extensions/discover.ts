@@ -6,17 +6,29 @@ import type { NotesWebExtension } from "./types.js";
  *
  * Mirrors apps/api/src/extensions/discover.ts: the premium edition ships
  * `@notespp/premium-web` as a workspace package that does not exist in the
- * community edition, so a missing module resolves to a graceful no-op. A
- * present-but-malformed module fails fast.
+ * community edition, so an unmatched discovery resolves to a graceful
+ * no-op. A present-but-malformed module fails fast.
+ *
+ * `import.meta.glob` resolves at build time and yields an empty record
+ * when nothing matches — the "absent" signal we need. A runtime `import()`
+ * of a bare specifier would be the other option, but it can never resolve
+ * in a real browser ("Failed to resolve module specifier"), which would
+ * silently disable every premium contribution in both dev and prod.
  */
+const premiumModules = import.meta.glob("../../../../packages/premium-web/src/index.tsx");
+
 export const PREMIUM_WEB_PACKAGE = "@notespp/premium-web";
 
 export type ModuleImporter = (specifier: string) => Promise<unknown>;
 
-const defaultImporter: ModuleImporter = (specifier) =>
-  // @vite-ignore keeps the bundler from statically resolving a package
-  // that intentionally may not exist.
-  import(/* @vite-ignore */ specifier);
+const defaultImporter: ModuleImporter = (specifier) => {
+  const [loadPremium] = Object.values(premiumModules);
+  if (!loadPremium) {
+    // Community edition: the glob matched nothing.
+    return Promise.reject(new Error(`Cannot find package '${specifier}'`));
+  }
+  return loadPremium();
+};
 
 function isModuleNotFound(err: unknown, specifier: string): boolean {
   if (typeof err !== "object" || err === null) return false;
