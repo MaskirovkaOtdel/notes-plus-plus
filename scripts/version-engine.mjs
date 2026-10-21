@@ -37,8 +37,12 @@ import { appendFileSync } from "node:fs";
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
-  /** Prefix for tags, e.g. "v1.2.3" */
-  tagPrefix: "v",
+  /**
+   * Prefix for tags, e.g. "v1.2.3". Overridable via TAG_PREFIX so the
+   * premium (air-gapped) edition can use a distinct prefix ("p") without
+   * ever colliding with the community "v*" tags it pulls in.
+   */
+  tagPrefix: process.env.TAG_PREFIX || "v",
   /** Hours that must elapse between two automatic (non-forced) releases. 0 = disabled. */
   cooldownHours: 0,
   /** Maximum automatic releases within a rolling 24h window. Infinity = unconstrained. */
