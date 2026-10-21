@@ -16,6 +16,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@notespp/ext-word-count": "workspace:*",
     "@notespp/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",

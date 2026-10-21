@@ -1,4 +1,4 @@
-import { HealthSchema } from "@notespp/shared";
+import { ExtensionListSchema, HealthSchema } from "@notespp/shared";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
   serializerCompiler,
@@ -7,12 +7,20 @@ import {
 } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { NotesRepository } from "./db/repository.js";
+import { registerExtensions } from "./extensions/registry.js";
+import type { NotesApiExtension } from "./extensions/types.js";
 import { registerNoteRoutes } from "./routes/notes.js";
 
 export interface BuildAppOptions {
   repo: NotesRepository;
   version: string;
   logger?: boolean;
+  /**
+   * Extensions to register, in order. Defaults to none — callers compose
+   * the list (see extensions/load.ts), keeping this factory pure and
+   * directly testable.
+   */
+  extensions?: readonly NotesApiExtension[];
 }
 
 /**
@@ -25,6 +33,7 @@ export async function buildApp({
   repo,
   version,
   logger = true,
+  extensions = [],
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
@@ -55,6 +64,26 @@ export async function buildApp({
   );
 
   await registerNoteRoutes(app, { repo });
+
+  // Extensions register deterministically in array order; validation and
+  // registration failures abort startup (fail-fast, never half-wired).
+  const registeredExtensions = await registerExtensions(
+    app,
+    { repo, version },
+    extensions,
+  );
+
+  app.get(
+    "/extensions",
+    {
+      schema: {
+        response: {
+          200: ExtensionListSchema,
+        },
+      },
+    },
+    async () => ({ items: registeredExtensions }),
+  );
 
   // Normalise Zod validation failures into the shared error envelope.
   app.setErrorHandler((error, _request, reply) => {

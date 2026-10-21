@@ -169,3 +169,55 @@ describe("error handling", () => {
     await boomApp.close();
   });
 });
+
+describe("extension seam", () => {
+  it("lists an empty extension set when built without extensions (standalone)", async () => {
+    const res = await app.inject({ method: "GET", url: "/extensions" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ items: [] });
+  });
+
+  it("registers extensions and lists their manifests", async () => {
+    const extApp = await buildApp({
+      repo: new InMemoryNotesRepository(),
+      version: "0.0.0-test",
+      logger: false,
+      extensions: [
+        {
+          manifest: { id: "demo-ext", name: "Demo extension", version: "2.1.0" },
+          register: (instance) => {
+            instance.get("/demo/ping", async () => ({ pong: true }));
+          },
+        },
+      ],
+    });
+
+    const list = await extApp.inject({ method: "GET", url: "/extensions" });
+    expect(list.statusCode).toBe(200);
+    expect(list.json().items).toEqual([
+      { id: "demo-ext", name: "Demo extension", version: "2.1.0" },
+    ]);
+
+    // The extension's own route is served too.
+    const ping = await extApp.inject({ method: "GET", url: "/demo/ping" });
+    expect(ping.statusCode).toBe(200);
+
+    await extApp.close();
+  });
+
+  it("aborts startup when an extension is invalid (fail-fast)", async () => {
+    await expect(
+      buildApp({
+        repo: new InMemoryNotesRepository(),
+        version: "0.0.0-test",
+        logger: false,
+        extensions: [
+          {
+            manifest: { id: "Bad Id", name: "bad", version: "1" },
+            register: () => undefined,
+          },
+        ],
+      }),
+    ).rejects.toThrow(/kebab-case|invalid/i);
+  });
+});

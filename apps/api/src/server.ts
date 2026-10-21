@@ -4,6 +4,7 @@ import { buildApp } from "./app.js";
 import { InMemoryNotesRepository } from "./db/in-memory.js";
 import { DrizzleNotesRepository } from "./db/drizzle-repository.js";
 import * as schema from "./db/schema.js";
+import { loadApiExtensions } from "./extensions/load.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const VERSION = process.env.APP_VERSION ?? "0.0.0";
@@ -34,7 +35,11 @@ async function main() {
     console.warn("DATABASE_URL not set — using in-memory repository (dev only)");
   }
 
-  const app = await buildApp({ repo, version: VERSION });
+  const app = await buildApp({
+    repo,
+    version: VERSION,
+    extensions: await loadApiExtensions(),
+  });
 
   const close = async () => {
     await app.close();
