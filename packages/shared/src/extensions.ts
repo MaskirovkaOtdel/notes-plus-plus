@@ -36,6 +36,17 @@ export interface ApiExtensionContext<TRepo> {
  */
 export interface ApiExtension<TRepo = unknown, TApp = unknown> {
   manifest: ExtensionManifest;
+  /**
+   * Optional write-path seam: wrap or replace the repository before any
+   * routes are wired. Decorators compose in extension order (each sees the
+   * previously decorated repository), and every consumer — note routes and
+   * extension contexts alike — receives the final decorated instance.
+   *
+   * Typical uses: audit logging, metrics, validation, or — as premium's
+   * version history does — capturing write snapshots. Decoration must be
+   * synchronous and must return a repository; anything else aborts startup.
+   */
+  decorateRepo?: (repo: TRepo) => TRepo;
   register(app: TApp, ctx: ApiExtensionContext<TRepo>): void | Promise<void>;
 }
 

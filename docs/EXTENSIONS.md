@@ -42,6 +42,43 @@ Register it in the composition root
 `NotesApiExtension` — `buildApp({ extensions })` takes them in array order,
 and `GET /extensions` lists whatever registered.
 
+### The write-path seam (`decorateRepo`)
+
+An API extension may also wrap the repository itself. This is how features
+that observe or intercept storage — audit logging, metrics, validation, or
+version-history snapshots — hook into every write without the host knowing
+about them:
+
+```ts
+export const historyExtension = {
+  manifest: { id: "history", name: "History", version: "1.0.0" },
+  decorateRepo(repo) {
+    return {
+      ...repo,
+      async update(id, input) {
+        const before = await repo.get(id); // read through the inner repo
+        const after = await repo.update(id, input);
+        if (after) recordRevision(before, after);
+        return after;
+      },
+    };
+  },
+  register(app, ctx) {
+    // ctx.repo is the composed repository — the same one routes use.
+  },
+} satisfies ApiExtension<NotesRepository, FastifyInstance>;
+```
+
+Rules:
+
+- Decorators compose **in array order**: each `decorateRepo` receives the
+  previously decorated repository, so later extensions can wrap earlier ones.
+- Composition happens **before any routes wire up**, so note routes and
+  every extension's `ctx.repo` see the same composed instance.
+- `decorateRepo` must be synchronous and must return a repository. A
+  throwing or no-op returner aborts startup (fail-fast), naming the
+  extension.
+
 ## Web extensions
 
 ```tsx

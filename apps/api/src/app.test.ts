@@ -2,6 +2,8 @@ import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "./app.js";
 import { InMemoryNotesRepository } from "./db/in-memory.js";
+import type { NotesRepository } from "./db/repository.js";
+import type { NotesApiExtension } from "./extensions/types.js";
 
 let app: FastifyInstance;
 
@@ -219,5 +221,66 @@ describe("extension seam", () => {
         ],
       }),
     ).rejects.toThrow(/kebab-case|invalid/i);
+  });
+});
+
+describe("write-path seam (decorateRepo)", () => {
+  it("routes and extension contexts see the decorated repository", async () => {
+    const writes: string[] = [];
+    const recording = (repo: NotesRepository): NotesRepository => ({
+      ...repo,
+      create: async (input) => {
+        writes.push(`create:${input.title}`);
+        return repo.create(input);
+      },
+    });
+    let ctxRepo: NotesRepository | null = null;
+    const observing: NotesApiExtension = {
+      manifest: { id: "observer", name: "Observer", version: "1.0.0" },
+      decorateRepo: recording,
+      register: (_app, ctx) => {
+        // The extension context carries the composed repository, so writes
+        // made through it are recorded too.
+        ctxRepo = ctx.repo;
+      },
+    };
+
+    const seamApp = await buildApp({
+      repo: new InMemoryNotesRepository(),
+      version: "0.0.0-test",
+      logger: false,
+      extensions: [observing],
+    });
+    const res = await seamApp.inject({
+      method: "POST",
+      url: "/notes",
+      payload: { title: "Seamed", body: "", tags: [] },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(writes).toEqual(["create:Seamed"]);
+
+    expect(ctxRepo).not.toBeNull();
+    await ctxRepo!.create({ title: "Via ctx", body: "", tags: [] });
+    expect(writes).toEqual(["create:Seamed", "create:Via ctx"]);
+    await seamApp.close();
+  });
+
+  it("fails startup when a decorator throws", async () => {
+    await expect(
+      buildApp({
+        repo: new InMemoryNotesRepository(),
+        version: "0.0.0-test",
+        logger: false,
+        extensions: [
+          {
+            manifest: { id: "boom", name: "Boom", version: "1.0.0" },
+            decorateRepo: () => {
+              throw new Error("kaput");
+            },
+            register: () => undefined,
+          },
+        ],
+      }),
+    ).rejects.toThrow(/failed to decorate the repository: kaput/);
   });
 });

@@ -7,7 +7,7 @@ import {
 } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { NotesRepository } from "./db/repository.js";
-import { registerExtensions } from "./extensions/registry.js";
+import { composeRepository, registerExtensions } from "./extensions/registry.js";
 import type { NotesApiExtension } from "./extensions/types.js";
 import { registerNoteRoutes } from "./routes/notes.js";
 
@@ -49,6 +49,11 @@ export async function buildApp({
 
   const startedAt = Date.now();
 
+  // Compose the write-path seam first: extensions may wrap the repository,
+  // and note routes plus every extension context must see one consistent
+  // (decorated) view of storage. Validation is fail-fast.
+  const effectiveRepo = composeRepository(extensions, repo);
+
   app.get(
     "/health",
     {
@@ -65,13 +70,13 @@ export async function buildApp({
     }),
   );
 
-  await registerNoteRoutes(app, { repo });
+  await registerNoteRoutes(app, { repo: effectiveRepo });
 
   // Extensions register deterministically in array order; validation and
   // registration failures abort startup (fail-fast, never half-wired).
   const registeredExtensions = await registerExtensions(
     app,
-    { repo, version },
+    { repo: effectiveRepo, version },
     extensions,
   );
 

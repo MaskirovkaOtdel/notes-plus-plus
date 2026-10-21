@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Fastify from "fastify";
-import { registerExtensions } from "./registry.js";
+import type { NotesRepository } from "../db/repository.js";
+import { composeRepository, registerExtensions } from "./registry.js";
 import type { NotesApiExtension } from "./types.js";
 
 function makeApp() {
@@ -116,5 +117,104 @@ describe("registerExtensions", () => {
       /has no register\(\) function/,
     );
     await app.close();
+  });
+});
+
+describe("composeRepository", () => {
+  const base = ctx.repo as unknown as NotesRepository;
+
+  const decorating = (
+    id: string,
+    wrap: (inner: NotesRepository) => NotesRepository,
+  ): NotesApiExtension => ({
+    manifest: { id, name: id, version: "1.0.0" },
+    decorateRepo: wrap,
+    register: () => undefined,
+  });
+
+  it("returns the base repository when no extension decorates", () => {
+    expect(composeRepository([], base)).toBe(base);
+    expect(
+      composeRepository(
+        [
+          {
+            manifest: { id: "plain", name: "plain", version: "1.0.0" },
+            register: () => undefined,
+          },
+        ],
+        base,
+      ),
+    ).toBe(base);
+  });
+
+  it("applies a decorator, and the result differs from the base", () => {
+    const composed = composeRepository([decorating("audit", (i) => ({ ...i }))], base);
+    expect(composed).not.toBe(base);
+    expect(composed.create).toBe(base.create);
+  });
+
+  it("composes decorators in array order (later wraps earlier)", () => {
+    const order: string[] = [];
+    const composed = composeRepository(
+      [
+        decorating("first", (inner) => {
+          order.push("first");
+          return { ...inner };
+        }),
+        decorating("second", (inner) => {
+          order.push("second");
+          // "inner" here is the repository the first decorator produced.
+          expect(inner).not.toBe(base);
+          return { ...inner };
+        }),
+      ],
+      base,
+    );
+    expect(order).toEqual(["first", "second"]);
+    expect(composed).not.toBe(base);
+  });
+
+  it("lets a decorator intercept writes while reads pass through", async () => {
+    const snapshots: unknown[] = [];
+    const historyAware = decorating("history", (inner) => ({
+      ...inner,
+      update: async (id: string, input: Parameters<typeof inner.update>[1]) => {
+        const before = await inner.get(id);
+        snapshots.push(before);
+        return inner.update(id, input);
+      },
+    }));
+    const composed = composeRepository([historyAware], base);
+    await composed.update("any", { title: "t" });
+    expect(snapshots).toHaveLength(1);
+  });
+
+  it("fails fast when a decorator throws, naming the extension", () => {
+    const broken = decorating("boom", () => {
+      throw new Error("kaput");
+    });
+    expect(() => composeRepository([broken], base)).toThrow(
+      /Extension "boom" failed to decorate the repository: kaput/,
+    );
+  });
+
+  it("fails fast when a decorator returns nothing", () => {
+    const empty = {
+      manifest: { id: "empty", name: "empty", version: "1.0.0" },
+      decorateRepo: () => undefined,
+      register: () => undefined,
+    } as unknown as NotesApiExtension;
+    expect(() => composeRepository([empty], base)).toThrow(
+      /Extension "empty" failed to decorate the repository: decorateRepo\(\) did not return a repository/,
+    );
+  });
+
+  it("fails fast on an invalid manifest before decorating", () => {
+    const bad = {
+      manifest: { id: "Bad Id!", name: "x", version: "1" },
+      decorateRepo: (r: unknown) => r,
+      register: () => undefined,
+    } as unknown as NotesApiExtension;
+    expect(() => composeRepository([bad], base)).toThrow();
   });
 });

@@ -44,5 +44,6 @@
 
 ### Directional (not yet specced):
 
-- **Phase 4 — Reading experience:** safe Markdown rendering in the detail view (+ card previews); shared renderer later reused by premium HTML export.
+- **Phase 4 — Reading experience:** safe Markdown rendering in the detail view (+ card previews); shared renderer later reused by premium HTML export. **Delivered in v0.6.0** (`@notespp/markdown`, marked + injectable DOMPurify sanitizer).
+- **Write-path seam (v0.7.0):** `ApiExtension.decorateRepo` lets extensions wrap the repository; composition happens before routes wire up, fail-fast on misuse. Community-usable (audit, metrics) and the basis for premium version history.
 - **Phase 5 — 1.0 stabilization:** offline/PWA hardening, self-hosting story (workspace TS-source packaging limitation), docs, deliberate v1.0.
