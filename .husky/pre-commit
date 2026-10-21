@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+# ============================================================================
+# Community edition pre-commit security audit (runs via husky, sh -e safe)
+# ============================================================================
+# Blocks commits that stage real environment files or sensitive-looking
+# filenames. Templates (.env.example / .env.sample) are allowed.
+# ============================================================================
+
+BLOCKED=0
+
+for f in $(git diff --cached --name-only); do
+  base=$(basename "$f")
+  case "$base" in
+    .env)
+      echo "[SECURITY AUDIT] Staged real environment file: $f" >&2
+      BLOCKED=1
+      ;;
+    .env.*)
+      case "$base" in
+        *.example | *.sample) : ;;
+        *)
+          echo "[SECURITY AUDIT] Staged non-template env file: $f" >&2
+          BLOCKED=1
+          ;;
+      esac
+      ;;
+  esac
+  if printf '%s' "$f" | grep -qiE 'secret|credentials|license-key'; then
+    echo "[SECURITY AUDIT] Staged sensitive-looking path: $f" >&2
+    BLOCKED=1
+  fi
+done
+
+if [ "$BLOCKED" -ne 0 ]; then
+  echo "Commit blocked by pre-commit security audit." >&2
+  exit 1
+fi
+
+exit 0
