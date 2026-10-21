@@ -20,7 +20,7 @@
     "@notespp/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",
-    "fastify-type-provider-zod": "^4.0.2",
+    "fastify-type-provider-zod": "^7.0.0",
     "postgres": "^3.4.9",
     "zod": "catalog:"
   },

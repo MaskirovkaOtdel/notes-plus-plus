@@ -1,5 +1,5 @@
 import { ExtensionListSchema, HealthSchema } from "@notespp/shared";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { LogController, type FastifyInstance } from "fastify";
 import {
   serializerCompiler,
   validatorCompiler,
@@ -37,7 +37,9 @@ export async function buildApp({
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
-    disableRequestLogging: process.env.NODE_ENV === "test",
+    logController: new LogController({
+      disableRequestLogging: process.env.NODE_ENV === "test",
+    }),
   }).withTypeProvider<ZodTypeProvider>();
 
   // Wire Zod as the schema compiler so route schemas are the same shared
