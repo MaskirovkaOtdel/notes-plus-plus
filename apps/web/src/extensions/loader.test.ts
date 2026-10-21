@@ -6,9 +6,14 @@ afterEach(() => {
 });
 
 describe("loadWebExtensions", () => {
-  it("loads community extensions with premium absent (standalone guarantee)", async () => {
+  it("loads community extensions first, with premium discovered when present", async () => {
+    // Community extensions always come first; premium overlays (absent in
+    // this edition, present in the premium repo) append after them. The
+    // assertions hold in both editions.
     const extensions = await loadWebExtensions();
-    expect(extensions.map((e) => e.manifest.id)).toEqual(["word-count"]);
+    const ids = extensions.map((e) => e.manifest.id);
+    expect(ids).toContain("word-count");
+    expect(ids[0]).toBe("word-count");
   });
 
   it("caches the loaded list", async () => {
