@@ -18,6 +18,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@notespp/markdown": "workspace:*",
     "@notespp/shared": "workspace:*"
   },
   "peerDependencies": {

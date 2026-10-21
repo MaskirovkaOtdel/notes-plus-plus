@@ -1,0 +1,30 @@
+{
+  "name": "@notespp/markdown",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared markdown rendering: parse with marked, sanitize with DOMPurify. Environment-agnostic so both the web app and server-side consumers (premium HTML export) reuse one renderer.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.17",
+    "marked": "^18.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.9",
+    "@vitest/coverage-v8": "catalog:",
+    "jsdom": "^27.0.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
