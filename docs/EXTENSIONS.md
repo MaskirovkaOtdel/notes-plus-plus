@@ -54,13 +54,20 @@ export const historyExtension = {
   manifest: { id: "history", name: "History", version: "1.0.0" },
   decorateRepo(repo) {
     return {
-      ...repo,
-      async update(id, input) {
+      // Delegate every method explicitly. Never spread the repository:
+      // the repositories are classes, and spreading an instance copies
+      // only its own fields — the prototype methods are lost, and
+      // composition fails fast if any are missing.
+      list: (query) => repo.list(query),
+      get: (id) => repo.get(id),
+      create: (input) => repo.create(input),
+      update: async (id, input) => {
         const before = await repo.get(id); // read through the inner repo
         const after = await repo.update(id, input);
         if (after) recordRevision(before, after);
         return after;
       },
+      remove: (id) => repo.remove(id),
     };
   },
   register(app, ctx) {
@@ -78,6 +85,9 @@ Rules:
 - `decorateRepo` must be synchronous and must return a repository. A
   throwing or no-op returner aborts startup (fail-fast), naming the
   extension.
+- The returned repository must implement the **whole** surface (`list`,
+  `get`, `create`, `update`, `remove`). Spreading a class instance loses
+  the prototype methods; composition fails fast if any are missing.
 
 ## Web extensions
 
