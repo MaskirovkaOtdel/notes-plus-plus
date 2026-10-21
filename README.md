@@ -96,4 +96,6 @@ what the engine would decide.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+PolyForm Noncommercial License 1.0.0 — free for personal, educational,
+research, and other noncommercial use. Commercial use requires a separate
+license from the copyright holder. See [LICENSE](./LICENSE).

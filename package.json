@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Notes++ — a fast, offline-capable, scalable notes application",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "MaskirovkaOtdel <thod.efstathiadis@gmail.com>",
   "packageManager": "pnpm@12.11.2",
   "engines": {
