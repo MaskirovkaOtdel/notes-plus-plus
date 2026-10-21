@@ -26,3 +26,23 @@
 6. Unit + integration tests prove the app builds and runs **with and without** extensions; e2e covers the chip and the `/extensions` endpoint.
 7. `docs/EXTENSIONS.md` documents authoring an extension; boundary doc cross-links it.
 8. Full verification suite green locally; release run decision line verified from logs (deliberate `v0.4.0`).
+
+## Phase 3: Note Lifecycle & Editing
+
+**Goal:** Close the most fundamental product gap: the app can create notes but not modify them. Full edit/save/delete lifecycle in the detail view, wired through the existing mutation hooks.
+
+### Success Criteria:
+
+1. The note detail view toggles between read and edit mode: editable title, body, and tags (chips with Enter-to-add / remove affordances).
+2. Save persists through the existing `useUpdateNote` hook and invalidates list + detail caches; Cancel restores the last persisted state.
+3. Delete requires an explicit confirmation step and returns to the list on success via `useDeleteNote`.
+4. The Back button warns when the draft has unsaved changes (dirty guard).
+5. While editing, the noteToolbar extension slot receives the live draft — the word-count chip updates as the user types (proves extensions compose with editing state).
+6. Saving/deleting failure states are surfaced inline, never silently swallowed.
+7. Component + App-level tests cover edit, tags, dirty-guard, and error paths; e2e covers the full lifecycle (create → edit → verify in list → delete → gone).
+8. Full verification suite green; deliberate `v0.5.0` with the release decision line verified from logs; premium synced.
+
+### Directional (not yet specced):
+
+- **Phase 4 — Reading experience:** safe Markdown rendering in the detail view (+ card previews); shared renderer later reused by premium HTML export.
+- **Phase 5 — 1.0 stabilization:** offline/PWA hardening, self-hosting story (workspace TS-source packaging limitation), docs, deliberate v1.0.
