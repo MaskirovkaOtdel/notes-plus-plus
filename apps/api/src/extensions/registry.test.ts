@@ -209,6 +209,38 @@ describe("composeRepository", () => {
     );
   });
 
+  it("fails fast when a decorator drops repository methods (spread trap)", () => {
+    // The community repositories are classes — spreading an instance copies
+    // only own fields, losing the prototype methods. That must abort
+    // startup, not surface later as broken routes.
+    class ClassRepo {
+      private readonly store = new Map<string, never>();
+      async list() {
+        return { items: [], total: 0, limit: 20, offset: 0 };
+      }
+      async get() {
+        return null;
+      }
+      async create() {
+        throw new Error("unused");
+      }
+      async update() {
+        return null;
+      }
+      async remove() {
+        return false;
+      }
+    }
+    const spreader = {
+      manifest: { id: "spreader", name: "spreader", version: "1.0.0" },
+      decorateRepo: (repo: NotesRepository) => ({ ...repo }),
+      register: () => undefined,
+    } as unknown as NotesApiExtension;
+    expect(() =>
+      composeRepository([spreader], new ClassRepo() as unknown as NotesRepository),
+    ).toThrow(/dropped repository method\(s\): list, get, create, update, remove/);
+  });
+
   it("fails fast on an invalid manifest before decorating", () => {
     const bad = {
       manifest: { id: "Bad Id!", name: "x", version: "1" },

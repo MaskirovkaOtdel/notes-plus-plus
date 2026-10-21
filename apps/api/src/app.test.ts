@@ -227,12 +227,18 @@ describe("extension seam", () => {
 describe("write-path seam (decorateRepo)", () => {
   it("routes and extension contexts see the decorated repository", async () => {
     const writes: string[] = [];
+    // Delegate every method explicitly: the repository is a class, so a
+    // spread would drop its prototype methods (composeRepository now
+    // fails fast on exactly that).
     const recording = (repo: NotesRepository): NotesRepository => ({
-      ...repo,
+      list: (query) => repo.list(query),
+      get: (id) => repo.get(id),
       create: async (input) => {
         writes.push(`create:${input.title}`);
         return repo.create(input);
       },
+      update: (id, input) => repo.update(id, input),
+      remove: (id) => repo.remove(id),
     });
     let ctxRepo: NotesRepository | null = null;
     const observing: NotesApiExtension = {

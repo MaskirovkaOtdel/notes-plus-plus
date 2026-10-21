@@ -7,14 +7,18 @@ import type { FastifyInstance } from "fastify";
 import type { NotesRepository } from "../db/repository.js";
 import type { NotesApiExtension } from "./types.js";
 
+/** The method surface a composed repository must preserve. */
+const REPO_METHODS = ["list", "get", "create", "update", "remove"] as const;
+
 /**
  * Composes the write-path seam: applies every extension's optional
  * `decorateRepo` in array order, so later decorators wrap earlier ones.
  *
  * The returned repository is what note routes and every extension context
  * receive — a single consistent view of storage. Fail-fast: an invalid
- * manifest, a throwing decorator, or a decorator that returns nothing
- * aborts startup with the offending extension id in the error.
+ * manifest, a throwing decorator, a decorator that returns nothing, or one
+ * that drops a repository method aborts startup with the offending
+ * extension id in the error.
  */
 export function composeRepository(
   extensions: readonly NotesApiExtension[],
@@ -32,6 +36,20 @@ export function composeRepository(
         typeof decorated !== "object"
       ) {
         throw new Error("decorateRepo() did not return a repository");
+      }
+      // Repositories are classes: spreading an instance copies only its own
+      // properties and silently drops the prototype methods. A decorator
+      // that loses methods must fail here, not as broken routes later.
+      const surface = decorated as unknown as Record<string, unknown>;
+      const missing = REPO_METHODS.filter(
+        (method) => typeof surface[method] !== "function",
+      );
+      if (missing.length > 0) {
+        throw new Error(
+          `decorateRepo() dropped repository method(s): ${missing.join(", ")} ` +
+            `— delegate every method explicitly instead of spreading the ` +
+            `repository instance`,
+        );
       }
       return decorated;
     } catch (err) {
