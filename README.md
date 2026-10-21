@@ -99,3 +99,9 @@ what the engine would decide.
 PolyForm Noncommercial License 1.0.0 — free for personal, educational,
 research, and other noncommercial use. Commercial use requires a separate
 license from the copyright holder. See [LICENSE](./LICENSE).
+
+## Editions
+
+Notes++ ships in a community edition (this repository) and a private premium
+edition — see [docs/COMMUNITY-PREMIUM.md](./docs/COMMUNITY-PREMIUM.md) for
+how the two relate.
