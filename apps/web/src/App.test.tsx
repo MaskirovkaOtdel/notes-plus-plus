@@ -102,4 +102,27 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getByText("Untitled note")).toBeInTheDocument());
   });
+
+  it("opens the detail view with the extension chip when a note is clicked", async () => {
+    const user = userEvent.setup();
+    stubFetchByRoute({
+      "/health": { body: makeHealth() },
+      // Insertion order matters: the specific detail route must come first,
+      // since "/notes" also matches "/notes/note-1" as a substring.
+      "/notes/note-1": {
+        body: makeNote({ title: "Deep dive", body: "alpha beta gamma" }),
+      },
+      "/notes": { body: makeListResponse([makeNote({ title: "Deep dive" })]) },
+    });
+    renderApp();
+
+    await waitFor(() => expect(screen.getByText("Deep dive")).toBeInTheDocument());
+    await user.click(screen.getByText("Deep dive"));
+
+    // The detail view renders, driven by the noteToolbar extension slot.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Back/ })).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("word-count-chip")).toHaveTextContent("3 words");
+  });
 });

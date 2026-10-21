@@ -59,6 +59,7 @@ export default defineConfig({
       // Route API calls to the Fastify server during development.
       "/health": "http://localhost:4000",
       "/notes": "http://localhost:4000",
+      "/extensions": "http://localhost:4000",
     },
   },
   test: {

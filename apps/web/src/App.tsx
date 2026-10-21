@@ -1,13 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, NoteCard } from "@notespp/ui";
+import { NoteDetail } from "./components/NoteDetail.js";
+import { loadWebExtensions } from "./extensions/loader.js";
+import type { NotesWebExtension } from "./extensions/types.js";
 import { useCreateNote, useHealth, useNotes } from "./lib/hooks.js";
 
-/** Main application shell: note list + create action. */
+/** Main application shell: note list + create action, or the detail view. */
 export function App() {
   const [search, setSearch] = useState("");
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [extensions, setExtensions] = useState<NotesWebExtension[]>([]);
   const { data, isPending, isError, refetch } = useNotes(search ? { search } : {});
   const createNote = useCreateNote();
   const health = useHealth();
+
+  useEffect(() => {
+    let alive = true;
+    loadWebExtensions().then((loaded) => {
+      if (alive) setExtensions(loaded);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const handleCreate = async () => {
     await createNote.mutateAsync({
@@ -42,7 +57,13 @@ export function App() {
       </div>
 
       <main className="mt-6 flex-1">
-        {isPending ? (
+        {selectedNoteId ? (
+          <NoteDetail
+            noteId={selectedNoteId}
+            extensions={extensions}
+            onBack={() => setSelectedNoteId(null)}
+          />
+        ) : isPending ? (
           <p className="text-sm text-slate-500">Loading notes…</p>
         ) : isError ? (
           <div className="rounded-md bg-rose-50 p-4 text-sm text-rose-700">
@@ -56,7 +77,7 @@ export function App() {
           <ul className="grid gap-3 sm:grid-cols-2">
             {data.items.map((note) => (
               <li key={note.id}>
-                <NoteCard note={note} />
+                <NoteCard note={note} onSelect={setSelectedNoteId} />
               </li>
             ))}
           </ul>
