@@ -111,10 +111,9 @@ function git(cmdArgs, { allowFail = false } = {}) {
 }
 
 function toSemver(v) {
-  return v
-    .replace(/^v/, "")
-    .split(".")
-    .map((n) => Number.parseInt(n, 10));
+  // Strip the configured prefix (not a hardcoded "v") so TAG_PREFIX=p works.
+  const body = v.startsWith(CONFIG.tagPrefix) ? v.slice(CONFIG.tagPrefix.length) : v;
+  return body.split(".").map((n) => Number.parseInt(n, 10));
 }
 
 function formatSemver([maj, min, pat]) {
