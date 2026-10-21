@@ -79,9 +79,20 @@ export const HealthSchema = z.object({
 
 export type Health = z.infer<typeof HealthSchema>;
 
+/** Word/character statistics for a note body. */
+export const NoteStatsSchema = z.object({
+  words: z.number().int().min(0),
+  chars: z.number().int().min(0),
+  readingTimeMinutes: z.number().min(0),
+});
+
+export type NoteStats = z.infer<typeof NoteStatsSchema>;
+
 /** Canonical API routes, so the web client never hardcodes strings. */
 export const API_ROUTES = {
   health: "/health",
   notes: "/notes",
   note: (id: string) => `/notes/${encodeURIComponent(id)}`,
+  noteStats: (id: string) => `/notes/${encodeURIComponent(id)}/stats`,
+  extensions: "/extensions",
 } as const;
