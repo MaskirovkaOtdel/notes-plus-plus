@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { renderMarkdown } from "@notespp/markdown";
 import { Button } from "@notespp/ui";
 import { useDeleteNote, useNote, useUpdateNote } from "../lib/hooks.js";
 import type { NotesWebExtension } from "../extensions/types.js";
@@ -174,9 +175,12 @@ export function NoteDetail({ noteId, extensions, onBack }: NoteDetailProps) {
               </h2>
               <NoteToolbar extensions={extensions} note={note} />
               {note.body ? (
-                <pre className="mt-4 whitespace-pre-wrap font-sans text-sm text-slate-700">
-                  {note.body}
-                </pre>
+                <div
+                  data-testid="note-body"
+                  className="prose-note mt-4 text-sm text-slate-700"
+                  // Sanitized by renderMarkdown (marked + DOMPurify).
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(note.body) }}
+                />
               ) : null}
               {note.tags.length > 0 ? (
                 <div className="mt-4 flex flex-wrap gap-1">

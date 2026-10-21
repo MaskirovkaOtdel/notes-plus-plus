@@ -23,6 +23,12 @@ describe("NoteCard", () => {
     expect(screen.getByText("todo")).toBeInTheDocument();
   });
 
+  it("shows the body as plain text with markdown syntax stripped", () => {
+    render(<NoteCard note={note} />);
+    expect(screen.getByText("Some markdown body")).toBeInTheDocument();
+    expect(screen.queryByText("Some **markdown** body")).not.toBeInTheDocument();
+  });
+
   it("hides the body paragraph and tag list when empty", () => {
     render(<NoteCard note={{ ...note, body: "", tags: [] }} />);
     expect(screen.getByText("My first note")).toBeInTheDocument();

@@ -17,3 +17,80 @@ body {
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Rendered markdown inside the note detail view (sanitized upstream). */
+.prose-note {
+  line-height: 1.7;
+}
+.prose-note > * + * {
+  margin-top: 0.75em;
+}
+.prose-note h1,
+.prose-note h2,
+.prose-note h3,
+.prose-note h4 {
+  font-weight: 650;
+  color: #0f172a;
+  line-height: 1.25;
+}
+.prose-note h1 {
+  font-size: 1.25em;
+}
+.prose-note h2 {
+  font-size: 1.125em;
+}
+.prose-note h3,
+.prose-note h4 {
+  font-size: 1em;
+}
+.prose-note ul,
+.prose-note ol {
+  padding-left: 1.25em;
+}
+.prose-note ul {
+  list-style: disc;
+}
+.prose-note ol {
+  list-style: decimal;
+}
+.prose-note a {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+.prose-note code {
+  background-color: #f1f5f9;
+  border-radius: 0.25em;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}
+.prose-note pre {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-radius: 0.5em;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+}
+.prose-note pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.prose-note blockquote {
+  border-left: 3px solid #e2e8f0;
+  padding-left: 0.75em;
+  color: #64748b;
+}
+.prose-note hr {
+  border-color: #e2e8f0;
+}
+.prose-note table {
+  border-collapse: collapse;
+}
+.prose-note th,
+.prose-note td {
+  border: 1px solid #e2e8f0;
+  padding: 0.35em 0.6em;
+}
+.prose-note img {
+  max-width: 100%;
+}

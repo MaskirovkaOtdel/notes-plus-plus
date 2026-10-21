@@ -273,4 +273,29 @@ describe("NoteDetail", () => {
     await user.type(screen.getByLabelText("Body"), " four");
     expect(screen.getByTestId("word-count-chip")).toHaveTextContent("4 words");
   });
+
+  it("renders the body as sanitized markdown in view mode", async () => {
+    stubNotesServer([makeNote({ body: "# Heading one\n\nSome **bold** text" })]);
+    renderDetail();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Heading one" })).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("note-body").querySelector("strong")).toHaveTextContent(
+      "bold",
+    );
+  });
+
+  it("strips scripts and event handlers from hostile note bodies", async () => {
+    stubNotesServer([
+      makeNote({
+        body: 'hi <script>window.__pwned = 1</script><img src=x onerror="window.__pwned = 2">',
+      }),
+    ]);
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId("note-body")).toBeInTheDocument());
+    const html = screen.getByTestId("note-body").innerHTML;
+    expect(html).not.toContain("<script");
+    expect(html).not.toContain("onerror");
+    expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined();
+  });
 });

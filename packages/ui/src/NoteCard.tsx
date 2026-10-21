@@ -1,4 +1,5 @@
 import type { Note } from "@notespp/shared";
+import { markdownToPlainText } from "@notespp/markdown";
 
 export interface NoteCardProps {
   note: Note;
@@ -15,7 +16,9 @@ export function NoteCard({ note, onSelect }: NoteCardProps) {
     >
       <h3 className="truncate text-sm font-semibold text-slate-900">{note.title}</h3>
       {note.body ? (
-        <p className="mt-1 line-clamp-3 text-sm text-slate-500">{note.body}</p>
+        <p className="mt-1 line-clamp-3 text-sm text-slate-500">
+          {markdownToPlainText(note.body)}
+        </p>
       ) : null}
       {note.tags.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1">
