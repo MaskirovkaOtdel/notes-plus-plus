@@ -58,7 +58,15 @@ const CONFIG = {
    * If every changed file since the last tag matches one of these prefixes,
    * no release is cut even if the commit types say otherwise.
    */
-  metaPathPrefixes: ["docs/", ".github/", "scripts/", "e2e/", "infra/"],
+  metaPathPrefixes: [
+    "docs/",
+    ".github/",
+    "scripts/",
+    "e2e/",
+    "infra/",
+    ".husky/",
+    ".githooks/",
+  ],
   metaPathFiles: [
     "package.json",
     "README.md",
