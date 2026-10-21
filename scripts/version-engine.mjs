@@ -60,6 +60,7 @@ const CONFIG = {
    */
   metaPathPrefixes: ["docs/", ".github/", "scripts/", "e2e/", "infra/"],
   metaPathFiles: [
+    "package.json",
     "README.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
