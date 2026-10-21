@@ -110,3 +110,56 @@ test.describe("note lifecycle", () => {
     await expect(page.getByText("Lifecycle note")).toHaveCount(0);
   });
 });
+
+/**
+ * Markdown reading experience (Phase 4): the detail view renders note bodies
+ * as sanitized markdown — headings become real headings and raw markdown
+ * syntax is not shown — while hostile HTML is stripped before it reaches
+ * the DOM.
+ */
+test.describe("markdown reading", () => {
+  test("renders markdown as HTML in the detail view", async ({ page, request }) => {
+    const created = await request.post("/notes", {
+      data: {
+        title: "Markdown note",
+        body: "# Big heading\n\nSome **bold** words",
+        tags: [],
+      },
+    });
+    expect(created.ok()).toBeTruthy();
+
+    await page.goto("/");
+    await page.getByText("Markdown note").first().click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Big heading" }),
+    ).toBeVisible();
+    await expect(page.locator('[data-testid="note-body"] strong')).toHaveText("bold");
+
+    // The raw markdown markers are not shown to the reader.
+    const bodyText = await page.getByTestId("note-body").innerText();
+    expect(bodyText).not.toContain("**");
+    expect(bodyText).not.toContain("# ");
+  });
+
+  test("sanitizes hostile HTML in note bodies", async ({ page, request }) => {
+    const created = await request.post("/notes", {
+      data: {
+        title: "Hostile note",
+        body: "safe <script>window.__pwned = 1</script> text",
+        tags: [],
+      },
+    });
+    expect(created.ok()).toBeTruthy();
+
+    await page.goto("/");
+    await page.getByText("Hostile note").first().click();
+
+    await expect(page.getByTestId("note-body")).toContainText("safe");
+    const html = await page.getByTestId("note-body").innerHTML();
+    expect(html).not.toContain("<script");
+    expect(
+      await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned),
+    ).toBeUndefined();
+  });
+});
