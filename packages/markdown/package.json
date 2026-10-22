@@ -6,11 +6,18 @@
   "description": "Shared markdown rendering: parse with marked, sanitize with DOMPurify. Environment-agnostic so both the web app and server-side consumers (premium HTML export) reuse one renderer.",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

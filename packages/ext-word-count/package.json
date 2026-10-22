@@ -6,19 +6,28 @@
   "description": "Reference extension: note word/character statistics (API route + web toolbar chip).",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./api": {
-      "types": "./src/api.ts",
-      "default": "./src/api.ts"
+      "development": "./src/api.ts",
+      "types": "./dist/api.d.ts",
+      "default": "./dist/api.js"
     },
     "./web": {
-      "types": "./src/web.tsx",
-      "default": "./src/web.tsx"
+      "development": "./src/web.tsx",
+      "types": "./dist/web.d.ts",
+      "default": "./dist/web.js"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

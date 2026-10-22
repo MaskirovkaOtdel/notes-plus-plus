@@ -5,6 +5,7 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "customConditions": ["development"],
     "resolveJsonModule": true,
     "allowJs": false,
     "strict": true,
