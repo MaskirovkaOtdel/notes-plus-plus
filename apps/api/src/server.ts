@@ -9,6 +9,11 @@ import { loadApiExtensions } from "./extensions/load.js";
 const PORT = Number(process.env.PORT ?? 4000);
 const VERSION = process.env.APP_VERSION ?? "0.0.0";
 const DATABASE_URL = process.env.DATABASE_URL;
+// Safe-by-default bind: loopback only. Container deployments (Docker
+// compose) set HOST=0.0.0.0 so the port is reachable through the container
+// network; anything beyond that should sit behind a reverse proxy.
+const HOST = process.env.HOST ?? "127.0.0.1";
+const API_TOKEN = process.env.NOTESPP_API_TOKEN;
 
 async function main() {
   let repo;
@@ -39,6 +44,7 @@ async function main() {
     repo,
     version: VERSION,
     extensions: await loadApiExtensions(),
+    apiToken: API_TOKEN,
   });
 
   const close = async () => {
@@ -48,7 +54,7 @@ async function main() {
   process.on("SIGINT", close);
   process.on("SIGTERM", close);
 
-  await app.listen({ port: PORT, host: "0.0.0.0" });
+  await app.listen({ port: PORT, host: HOST });
 }
 
 main().catch((err) => {

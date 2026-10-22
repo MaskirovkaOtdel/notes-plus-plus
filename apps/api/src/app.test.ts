@@ -290,3 +290,94 @@ describe("write-path seam (decorateRepo)", () => {
     ).rejects.toThrow(/failed to decorate the repository: kaput/);
   });
 });
+
+describe("bearer token auth", () => {
+  let tokenApp: FastifyInstance;
+
+  beforeAll(async () => {
+    tokenApp = await buildApp({
+      repo: new InMemoryNotesRepository(),
+      version: "0.0.0-test",
+      logger: false,
+      apiToken: "test-token",
+    });
+  });
+
+  afterAll(async () => {
+    await tokenApp.close();
+  });
+
+  it("rejects reads without the header", async () => {
+    const res = await tokenApp.inject({ method: "GET", url: "/notes" });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().code).toBe("UNAUTHORIZED");
+  });
+
+  it("rejects a wrong token", async () => {
+    const res = await tokenApp.inject({
+      method: "GET",
+      url: "/notes",
+      headers: { authorization: "Bearer wrong" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("rejects malformed auth headers", async () => {
+    const res = await tokenApp.inject({
+      method: "GET",
+      url: "/notes",
+      headers: { authorization: "Basic abc" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("rejects a token that shares a prefix with the real one", async () => {
+    const res = await tokenApp.inject({
+      method: "GET",
+      url: "/notes",
+      headers: { authorization: "Bearer test-toke" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("accepts the correct token on gated reads", async () => {
+    const res = await tokenApp.inject({
+      method: "GET",
+      url: "/notes",
+      headers: { authorization: "Bearer test-token" },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("gates mutations too", async () => {
+    const denied = await tokenApp.inject({
+      method: "POST",
+      url: "/notes",
+      payload: { title: "t", body: "b", tags: [] },
+    });
+    expect(denied.statusCode).toBe(401);
+    const allowed = await tokenApp.inject({
+      method: "POST",
+      url: "/notes",
+      headers: { authorization: "Bearer test-token" },
+      payload: { title: "t", body: "b", tags: [] },
+    });
+    expect(allowed.statusCode).toBe(201);
+  });
+
+  it("gates the extensions listing", async () => {
+    const res = await tokenApp.inject({ method: "GET", url: "/extensions" });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("keeps /health open without credentials", async () => {
+    const res = await tokenApp.inject({ method: "GET", url: "/health" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe("ok");
+  });
+
+  it("keeps /health open with query parameters", async () => {
+    const res = await tokenApp.inject({ method: "GET", url: "/health?probe=1" });
+    expect(res.statusCode).toBe(200);
+  });
+});

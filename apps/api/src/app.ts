@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { ExtensionListSchema, HealthSchema } from "@notespp/shared";
 import Fastify, { LogController, type FastifyInstance } from "fastify";
 import {
@@ -21,6 +22,14 @@ export interface BuildAppOptions {
    * directly testable.
    */
   extensions?: readonly NotesApiExtension[];
+  /**
+   * When set to a non-empty value, every route except `GET /health` requires
+   * an `Authorization: Bearer <token>` header. Unset (the default) leaves the
+   * API unauthenticated — the documented posture for a localhost-bound
+   * personal instance. Comparison is constant-time over SHA-256 digests so
+   * neither the token length nor its bytes leak through timing.
+   */
+  apiToken?: string;
 }
 
 /**
@@ -34,6 +43,7 @@ export async function buildApp({
   version,
   logger = true,
   extensions = [],
+  apiToken,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
@@ -46,6 +56,28 @@ export async function buildApp({
   // contracts the web client consumes.
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+
+  // Optional bearer-token gate. Registered as an onRequest hook so it runs
+  // before every route (including extension routes); /health stays open so
+  // container orchestrators can probe without credentials.
+  if (apiToken !== undefined && apiToken !== "") {
+    const expected = createHash("sha256").update(apiToken, "utf8").digest();
+    app.addHook("onRequest", async (request, reply) => {
+      if (request.url.split("?")[0] === "/health") return;
+      const header = request.headers.authorization;
+      const token =
+        typeof header === "string" && header.startsWith("Bearer ")
+          ? header.slice("Bearer ".length)
+          : undefined;
+      const received =
+        token !== undefined
+          ? createHash("sha256").update(token, "utf8").digest()
+          : undefined;
+      if (received === undefined || !timingSafeEqual(received, expected)) {
+        return reply.code(401).send({ error: "Unauthorized", code: "UNAUTHORIZED" });
+      }
+    });
+  }
 
   const startedAt = Date.now();
 

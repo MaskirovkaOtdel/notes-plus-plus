@@ -16,6 +16,12 @@ import {
 /** Base URL for the API. In dev this is proxied by Vite. */
 const BASE = import.meta.env.VITE_API_BASE ?? "";
 
+/**
+ * Optional bearer token. Set `VITE_API_TOKEN` at build time to match the
+ * server's `NOTESPP_API_TOKEN` when the API is deployed beyond localhost.
+ */
+const TOKEN = import.meta.env.VITE_API_TOKEN;
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -36,6 +42,7 @@ async function request<T>(
   // empty body with this header makes Fastify reject the request
   // (FST_ERR_CTP_EMPTY_JSON_BODY), which previously broke DELETE.
   const headers: Record<string, string> = {
+    ...(TOKEN ? { authorization: `Bearer ${TOKEN}` } : {}),
     ...(options.body !== undefined ? { "content-type": "application/json" } : {}),
     ...((options.headers as Record<string, string>) ?? {}),
   };
