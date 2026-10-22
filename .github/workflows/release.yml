@@ -57,6 +57,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Engine regression coverage
+        run: node --test scripts/version-engine.test.mjs
+
       - name: Determine next version
         id: version
         env:
