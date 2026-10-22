@@ -9,7 +9,8 @@
  *  and reproducible.
  *
  *  Version mapping (SemVer):
- *    BREAKING CHANGE / type!:  1.X.X -> 2.X.X   (important update)
+ *    BREAKING CHANGE / type!:  1.X.X -> 2.X.X     (breaking: major, 1.0+ only)
+ *    BREAKING CHANGE / type!:  0.X.X -> 0.(X+1).0 (breaking below 1.0: minor)
  *    feat:                     X.1.X -> X.2.X   (mainstream update)
  *    fix: / perf: / revert:    X.X.1 -> X.X.2   (small patch / hotfix)
  *    chore/docs/ci/...         (no release)
@@ -244,6 +245,9 @@ const releaseWorthy = parsed.filter(
 // 3. Determine the requested bump level
 // ---------------------------------------------------------------------------
 
+// Base version from the last tag, needed by the bump rules below.
+const baseVersion = lastTag ? toSemver(lastTag) : [0, 0, 0];
+
 let bump = "none"; // none | patch | minor | major | override
 
 if (FORCE_FLAG) {
@@ -252,8 +256,11 @@ if (FORCE_FLAG) {
 
 for (const c of releaseWorthy) {
   if (c.isBreaking) {
-    bump = "major";
-    break; // major is the ceiling
+    // Breaking changes never mint a major below 1.0 — they bump the minor
+    // (0.8.x -> 0.9.0). The 1.0.0 mark itself is a human decision made via
+    // an explicit --set-version deliberate cut, not an engine afterthought.
+    bump = baseVersion[0] === 0 ? "minor" : "major";
+    break; // breaking is the ceiling
   }
   if (CONFIG.minorTypes.has(c.type)) {
     if (bump !== "major") bump = "minor";
@@ -266,7 +273,6 @@ for (const c of releaseWorthy) {
 // 4. Compute the next version from the last tag
 // ---------------------------------------------------------------------------
 
-const baseVersion = lastTag ? toSemver(lastTag) : [0, 0, 0];
 let [maj, min, pat] = baseVersion;
 
 switch (bump) {
