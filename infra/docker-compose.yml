@@ -1,3 +1,16 @@
+# Notes++ infrastructure.
+#
+# Local dev:      pnpm db:up        (Postgres only, development credentials)
+# Self-hosted:    pnpm app:up       (builds the app image, runs app + Postgres)
+#
+# SECURITY — read before exposing anything beyond your own machine:
+#   * Rotate the Postgres password for anything but throwaway local use:
+#       NOTESPP_DB_PASSWORD=... pnpm app:up
+#   * Enable bearer auth by setting NOTESPP_API_TOKEN below (and rebuilding
+#     the web image with --build-arg VITE_API_TOKEN=... so the UI sends it).
+#   * The published port is plain HTTP. Terminate TLS at a reverse proxy
+#     (Caddy, nginx, traefik) before sharing beyond localhost.
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,7 +18,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: notespp
-      POSTGRES_PASSWORD: notespp
+      # Development default; override for real deployments (see header).
+      POSTGRES_PASSWORD: ${NOTESPP_DB_PASSWORD:-notespp}
       POSTGRES_DB: notespp
     ports:
       - "5432:5432"
@@ -16,6 +30,37 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.0.0-docker}
+        # Must match the NOTESPP_API_TOKEN runtime env when auth is enabled.
+        VITE_API_TOKEN: ${VITE_API_TOKEN:-}
+    container_name: notespp-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4000"
+      DATABASE_URL: postgres://notespp:${NOTESPP_DB_PASSWORD:-notespp}@postgres:5432/notespp
+      # Apply version-controlled SQL migrations (apps/api/drizzle) at boot.
+      MIGRATE_ON_BOOT: "true"
+      APP_VERSION: ${APP_VERSION:-0.0.0-docker}
+      # Uncomment to require a bearer token on every route except /health:
+      # NOTESPP_API_TOKEN: ${VITE_API_TOKEN:-}
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/health || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
 
 volumes:
   notespp_pgdata:

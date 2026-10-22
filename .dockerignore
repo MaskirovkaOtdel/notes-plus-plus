@@ -1,0 +1,20 @@
+# Never bake local state or dependencies into the image: the build stage
+# installs and builds everything from scratch for reproducibility.
+node_modules
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+.git
+.env
+.env.*
+!.env.example
+.planning
+.github
+infra
+playwright-report
+**/playwright-report
+test-results
+**/test-results
+*.tgz
+docs

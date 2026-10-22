@@ -22,8 +22,10 @@
     "test": "turbo test",
     "test:e2e": "pnpm --filter @notespp/e2e test",
     "coverage": "turbo coverage",
-    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d postgres",
     "db:down": "docker compose -f infra/docker-compose.yml down",
+    "app:up": "docker compose -f infra/docker-compose.yml up -d --build app",
+    "app:down": "docker compose -f infra/docker-compose.yml down",
     "db:push": "pnpm --filter @notespp/api db:push",
     "version:check": "node scripts/version-engine.mjs --dry-run",
     "prepare": "husky"
