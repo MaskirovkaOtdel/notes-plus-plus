@@ -14,8 +14,9 @@ Phase 5 success criteria live in ROADMAP.md (six numbered criteria: packaging,
 Docker deployment, network safety, PWA/offline hardening, docs, deliberate
 v1.0.0). Workstream tasks are tracked here as they are picked up:
 
-- [ ] 5.1 Packaging: workspace packages build to `dist` with real `exports`;
-      plain-`node` API start works; `pnpm pack` consumable
+- [x] 5.1 Packaging: workspace packages build to `dist` with real `exports`;
+      plain-`node` API start works; `pnpm pack` consumable (verified: build +
+      boot + pack + full suite green, commit b51bd96)
 - [ ] 5.2 Docker: multi-stage Dockerfile + compose app service, live-verified
 - [ ] 5.3 Network safety: `HOST` bind control + optional `NOTESPP_API_TOKEN`
       bearer auth + tests
