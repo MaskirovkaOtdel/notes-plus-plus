@@ -46,4 +46,23 @@
 
 - **Phase 4 — Reading experience:** safe Markdown rendering in the detail view (+ card previews); shared renderer later reused by premium HTML export. **Delivered in v0.6.0** (`@notespp/markdown`, marked + injectable DOMPurify sanitizer).
 - **Write-path seam (v0.7.0):** `ApiExtension.decorateRepo` lets extensions wrap the repository; composition happens before routes wire up, fail-fast on misuse. Community-usable (audit, metrics) and the basis for premium version history.
-- **Phase 5 — 1.0 stabilization:** offline/PWA hardening, self-hosting story (workspace TS-source packaging limitation), docs, deliberate v1.0.
+
+## Phase 5: 1.0 Stabilization
+
+**Goal:** Make the self-hosting story real and the 1.0 honest: workspace packages that build and run outside the dev toolchain, a supported Docker deployment, a safe-by-default network posture, hardened offline/PWA behavior with real test coverage, the docs to tie it together — and a deliberate v1.0.0. Scope informed by the premium P3 sync spec (`docs/P3-SPEC.md` in the premium edition): the P3 hub container builds on this phase's packaging and Docker foundation.
+
+### Success Criteria:
+
+1. **Packaging.** Workspace packages compile to `dist` (JS + `.d.ts`) with real `exports` maps; `pnpm build && node apps/api/dist/server.js` boots a healthy API under plain Node with no TypeScript tooling involved; `pnpm pack` on `@notespp/shared` yields a consumable tarball. Dev and test workflows keep resolving source without extra manual build steps. Premium overlay discovery keeps its contract after sync (graceful no-op in community, loads in premium).
+2. **Docker deployment.** A multi-stage `Dockerfile` builds the app (API + built web assets) and `infra/docker-compose.yml` gains an app service (healthcheck, Postgres wired, explicit password-rotation guidance). From a clean clone, `docker compose up` serves the app end-to-end — verified live by creating, editing, and reading a note through the deployed UI.
+3. **Network safety.** API bind address configurable via `HOST` (safe default `127.0.0.1`; the Docker service sets `0.0.0.0` inside the container). Optional `NOTESPP_API_TOKEN` bearer auth gates every API route except `/health` when set. Tests prove 401 without the token / 200 with it, and unchanged behavior when unset.
+4. **PWA/offline hardening.** Service-worker registration failures are handled and surfaced instead of failing silently. When the `NetworkFirst` API cache fires while the page is open, the UI signals that data is stale and refetches on reconnect. A production-preview e2e project covers: the SW registers, app shell + cached notes load with the network offline, an offline edit attempt surfaces the inline error, and reconnect recovers.
+5. **Docs.** README gains a self-hosting quickstart (Docker + bare metal) and an honest limitations section (no offline write queue; no auth unless `NOTESPP_API_TOKEN` is set). New `docs/DEPLOYMENT.md` (env-var table incl. `HOST`/`NOTESPP_API_TOKEN`/`DATABASE_URL`, reverse-proxy notes, backup) and `SECURITY.md` (reporting channel + exposure guidance).
+6. **Deliberate v1.0.0.** Full verification suite green — `pnpm lint && pnpm format:check && pnpm typecheck && pnpm coverage && pnpm build && pnpm test:e2e` (including the new production-PWA e2e) — pushed with GitHub CI green; engine-driven `v1.0.0` release with its decision line read explicitly from the run (`engine exit code: 0`); CHANGELOG current; premium synced onto the release with its own suite green.
+
+### Non-goals (documented limitations, not built here):
+
+- Offline write queue / background sync — offline _reads_ are supported; offline write attempts fail with inline errors (stated in docs).
+- Auth beyond the optional single bearer token — multi-user/collaboration stays parked.
+- Publishing packages to a registry — pack-ability is proven; npm publication is out of scope.
+- Native mobile apps, i18n.
