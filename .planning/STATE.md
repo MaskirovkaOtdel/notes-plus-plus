@@ -1,9 +1,9 @@
 ---
 PROJECT_NAME: "notes-plus-plus"
 PROJECT_MODE: "Single-Target Standard"
-ACTIVE_PHASE: "Phase 5: 1.0 Stabilization — complete; release machinery corrected (v1.0.0 withdrawn, 0.8.1 remains latest)"
+ACTIVE_PHASE: "Phase 5: 1.0 Stabilization — complete; v0.9.0 released via an engine-driven minor cut; community + premium verified"
 CIRCUIT_BREAKER_STRIKES: 0
-LAST_VERIFIED_SHA: "b06b3a3"
+LAST_VERIFIED_SHA: "9490474"
 ---
 
 # Project Execution State
@@ -36,8 +36,9 @@ engine-driven release). Workstream tasks are tracked here as they are picked up:
       commit, changelog claims, and the breaking marker were scrubbed from
       history; the engine no longer derives a major below 1.0 (breaking
       changes bump the minor) and deliberate cuts go through
-      `--set-version`; v0.8.1 remains the latest release; premium re-sync
-      follows
+      `--set-version`; the shipped work then published as the deliberate
+      `v0.9.0` minor cut (dispatch, `bump: override`); premium re-synced
+      (916b79a) with its own full suite + e2e green
 
 ## Blockers & Anomalies
 
