@@ -108,13 +108,14 @@ Versioning is SemVer, driven entirely by Conventional Commits:
   `type!:`); the engine never mints a major on the 0.x line, so reaching
   `1.0.0` is a deliberate, human-approved cut
 
-Releases are cut automatically on merges to `main`, guarded by anti-overflow
-gates so tags never flood:
+Releases are cut automatically on merges to `main`, guarded so tags never
+flood. The type, path and dedupe gates always apply; the cooldown and the
+24-hour cap are configurable and currently permissive:
 
 1. **Type gate** — only release-worthy commit types produce a tag.
 2. **Path gate** — docs/meta/config-only changes are ignored.
-3. **Cooldown** — rapid merges batch into one release.
-4. **24h cap** — a rolling cap prevents runaway releases.
+3. **Cooldown** — rapid merges batch into one release (`cooldownHours: 0` — off).
+4. **24h cap** — a rolling cap prevents runaway releases (currently unlimited).
 5. **Dedupe** — an existing version is never re-tagged.
 
 A `hotfix` commit marker (`[release-now]`) or a manual `workflow_dispatch` with

@@ -9,6 +9,8 @@ published version also live in the GitHub Releases.
 
 <!-- entries below -->
 
+## [Unreleased]
+
 ## [0.9.0] - 2026-10-22
 
 ### Added
@@ -42,4 +44,5 @@ published version also live in the GitHub Releases.
 - Offline edits in the web app attempt the save and fail inline with the draft
   intact instead of queueing silently while offline (Phase 5.4).
 
+[Unreleased]: https://github.com/MaskirovkaOtdel/notes-plus-plus/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/MaskirovkaOtdel/notes-plus-plus/compare/v0.8.1...v0.9.0
