@@ -49,7 +49,7 @@
 
 ## Phase 5: 1.0 Stabilization
 
-**Goal:** Make the self-hosting story real and the 1.0 honest: workspace packages that build and run outside the dev toolchain, a supported Docker deployment, a safe-by-default network posture, hardened offline/PWA behavior with real test coverage, the docs to tie it together — and a deliberate v1.0.0. Scope informed by the premium P3 sync spec (`docs/P3-SPEC.md` in the premium edition): the P3 hub container builds on this phase's packaging and Docker foundation.
+**Goal:** Make the self-hosting story real and the 1.0 honest: workspace packages that build and run outside the dev toolchain, a supported Docker deployment, a safe-by-default network posture, hardened offline/PWA behavior with real test coverage, the docs to tie it together — with releases driven by the version engine. Scope informed by the premium P3 sync spec (`docs/P3-SPEC.md` in the premium edition): the P3 hub container builds on this phase's packaging and Docker foundation.
 
 ### Success Criteria:
 
@@ -58,7 +58,7 @@
 3. **Network safety.** API bind address configurable via `HOST` (safe default `127.0.0.1`; the Docker service sets `0.0.0.0` inside the container). Optional `NOTESPP_API_TOKEN` bearer auth gates every API route except `/health` when set. Tests prove 401 without the token / 200 with it, and unchanged behavior when unset.
 4. **PWA/offline hardening.** Service-worker registration failures are handled and surfaced instead of failing silently. When the `NetworkFirst` API cache fires while the page is open, the UI signals that data is stale and refetches on reconnect. A production-preview e2e project covers: the SW registers, app shell + cached notes load with the network offline, an offline edit attempt surfaces the inline error, and reconnect recovers.
 5. **Docs.** README gains a self-hosting quickstart (Docker + bare metal) and an honest limitations section (no offline write queue; no auth unless `NOTESPP_API_TOKEN` is set). New `docs/DEPLOYMENT.md` (env-var table incl. `HOST`/`NOTESPP_API_TOKEN`/`DATABASE_URL`, reverse-proxy notes, backup) and `SECURITY.md` (reporting channel + exposure guidance).
-6. **Deliberate v1.0.0.** Full verification suite green — `pnpm lint && pnpm format:check && pnpm typecheck && pnpm coverage && pnpm build && pnpm test:e2e` (including the new production-PWA e2e) — pushed with GitHub CI green; engine-driven `v1.0.0` release with its decision line read explicitly from the run (`engine exit code: 0`); CHANGELOG current; premium synced onto the release with its own suite green.
+6. **Engine-driven release.** Full verification suite green — `pnpm lint && pnpm format:check && pnpm typecheck && pnpm coverage && pnpm build && pnpm test:e2e` (including the new production-PWA e2e) — pushed with GitHub CI green; the release decision line read explicitly from the run (`engine exit code: 0`); CHANGELOG current; premium synced onto the release with its own suite green.
 
 ### Non-goals (documented limitations, not built here):
 

@@ -10,7 +10,7 @@
 - [ ] `fix` — bug fix (patch bump)
 - [ ] `perf` — performance improvement (patch bump)
 - [ ] `refactor` / `chore` / `docs` / `ci` / `test` — no release
-- [ ] `!` / BREAKING CHANGE — major bump
+- [ ] `!` / BREAKING CHANGE — minor bump below 1.0, major at 1.0+
 
 ## How Has This Been Tested?
 

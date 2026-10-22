@@ -26,12 +26,12 @@ type directly determines the version bump, so this is enforced in CI:
 type(scope): subject
 ```
 
-| Commit type                                                 | Version bump            | Example                          |
-| ----------------------------------------------------------- | ----------------------- | -------------------------------- |
-| `feat`                                                      | minor (`X.1.X → X.2.X`) | `feat(web): add markdown editor` |
-| `fix`, `perf`, `revert`                                     | patch (`X.X.1 → X.X.2`) | `fix(api): race in sync`         |
-| `chore`, `docs`, `ci`, `refactor`, `test`, `style`, `build` | none                    | `docs: fix typo`                 |
-| `!` or `BREAKING CHANGE` footer                             | major (`1.X.X → 2.X.X`) | `feat!: drop legacy import`      |
+| Commit type                                                 | Version bump                                     | Example                          |
+| ----------------------------------------------------------- | ------------------------------------------------ | -------------------------------- |
+| `feat`                                                      | minor (`X.1.X → X.2.X`)                          | `feat(web): add markdown editor` |
+| `fix`, `perf`, `revert`                                     | patch (`X.X.1 → X.X.2`)                          | `fix(api): race in sync`         |
+| `chore`, `docs`, `ci`, `refactor`, `test`, `style`, `build` | none                                             | `docs: fix typo`                 |
+| `!` or `BREAKING CHANGE` footer                             | minor below 1.0 (`0.8.x → 0.9.0`), major at 1.0+ | `feat!: drop legacy import`      |
 
 Valid scopes: `api`, `web`, `shared`, `ui`, `e2e`, `ci`, `release`, `deps`,
 `infra`, `docs`.

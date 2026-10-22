@@ -104,7 +104,9 @@ Versioning is SemVer, driven entirely by Conventional Commits:
 
 - `X.X.1 → X.X.2` — small patch/hotfix (`fix`, `perf`, `revert`)
 - `X.1.X → X.2.X` — mainstream update (`feat`)
-- `1.X.X → 2.X.X` — important update (`BREAKING CHANGE` or `type!:`)
+- `0.9.0 below 1.0, 2.0.0 at 1.0+` — breaking change (`BREAKING CHANGE` or
+  `type!:`); the engine never mints a major on the 0.x line, so reaching
+  `1.0.0` is a deliberate, human-approved cut
 
 Releases are cut automatically on merges to `main`, guarded by anti-overflow
 gates so tags never flood:

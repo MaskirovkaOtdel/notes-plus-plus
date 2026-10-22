@@ -1,9 +1,9 @@
 ---
 PROJECT_NAME: "notes-plus-plus"
 PROJECT_MODE: "Single-Target Standard"
-ACTIVE_PHASE: "Phase 5: 1.0 Stabilization — complete; v1.0.0 released, community + premium verified"
+ACTIVE_PHASE: "Phase 5: 1.0 Stabilization — complete; release machinery corrected (v1.0.0 withdrawn, 0.8.1 remains latest)"
 CIRCUIT_BREAKER_STRIKES: 0
-LAST_VERIFIED_SHA: "bd5e0ac"
+LAST_VERIFIED_SHA: "b06b3a3"
 ---
 
 # Project Execution State
@@ -11,31 +11,33 @@ LAST_VERIFIED_SHA: "bd5e0ac"
 ## Active Goals
 
 Phase 5 success criteria live in ROADMAP.md (six numbered criteria: packaging,
-Docker deployment, network safety, PWA/offline hardening, docs, deliberate
-v1.0.0). Workstream tasks are tracked here as they are picked up:
+Docker deployment, network safety, PWA/offline hardening, docs, the
+engine-driven release). Workstream tasks are tracked here as they are picked up:
 
 - [x] 5.1 Packaging: workspace packages build to `dist` with real `exports`;
       plain-`node` API start works; `pnpm pack` consumable (verified: build +
-      boot + pack + full suite green, commit b51bd96)
+      boot + pack + full suite green, commit 4afc31a)
 - [x] 5.2 Docker: multi-stage Dockerfile + compose app service, live-verified
       (clean-volume boot, migrations, browser create→edit→read through the
-      deployed UI, non-root, healthcheck; commits def1c27 + d9337ba)
+      deployed UI, non-root, healthcheck; commits a32fe80 + cf0092a)
 - [x] 5.3 Network safety: `HOST` bind control + optional `NOTESPP_API_TOKEN`
       bearer auth + tests (live probes: loopback default / gated 0.0.0.0 /
-      unset unchanged; commit eb6a999)
+      unset unchanged; commit 240c8a6)
 - [x] 5.4 PWA/offline hardening: SW registration failure surfacing, stale-data
       signal on NetworkFirst cache hits, refetch-on-reconnect, and a
       production-preview e2e project (11/11 e2e incl. offline shell, offline
-      save error, reconnect recovery; commits 629d0f9 + 5ca1134)
+      save error, reconnect recovery; commits 071c10a + 3ac6764)
 - [x] 5.5 Docs: README self-hosting + limitations, `docs/DEPLOYMENT.md`,
-      `SECURITY.md` (commit 382ae34)
-- [x] 5.6 Deliberate `v1.0.0`: final full gate green (lint, format, typecheck,
-      coverage web 97.41/api 100, build, e2e 11/11); pushed bd5e0ac — GitHub
-      CI green; Release run decided with `engine exit code: 0 (0=release,
-2=skip)` + `Releasing v1.0.0 (bump: major)` (breaking footer on
-      bd5e0ac: loopback default bind + dist-only package exports); tag +
-      release live; CHANGELOG entry committed; premium synced (738ca95) with
-      its own full suite + e2e green
+      `SECURITY.md` (commit 48e86f3)
+- [x] 5.6 Engine-driven release: full gate green (lint, format, typecheck,
+      coverage web 97.41/api 100, build, e2e 11/11); decision line read
+      explicitly (`engine exit code: 0 (0=release, 2=skip)`); the resulting
+      `v1.0.0` tag + release were then withdrawn at direction — release
+      commit, changelog claims, and the breaking marker were scrubbed from
+      history; the engine no longer derives a major below 1.0 (breaking
+      changes bump the minor) and deliberate cuts go through
+      `--set-version`; v0.8.1 remains the latest release; premium re-sync
+      follows
 
 ## Blockers & Anomalies
 

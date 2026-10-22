@@ -5,7 +5,7 @@
 # Commits since the last release tag:
 #   * fix: / perf: / revert:  -> X.X.1 -> X.X.2 (patch)
 #   * feat:                   -> X.1.X -> X.2.X (minor)
-#   * BREAKING CHANGE / !:    -> 1.X.X -> 2.X.X (major)
+#   * BREAKING CHANGE / !:    -> 0.(X+1).0 below 1.0 (minor), X.0.0 at 1.0+
 #
 # Generates structured release notes via scripts/release-notes.mjs and creates
 # a GitHub Release and git tag.
