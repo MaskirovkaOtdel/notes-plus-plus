@@ -23,8 +23,10 @@ v1.0.0). Workstream tasks are tracked here as they are picked up:
 - [x] 5.3 Network safety: `HOST` bind control + optional `NOTESPP_API_TOKEN`
       bearer auth + tests (live probes: loopback default / gated 0.0.0.0 /
       unset unchanged; commit eb6a999)
-- [ ] 5.4 PWA/offline hardening: SW registration resilience, stale-data signal,
-      production-preview e2e coverage
+- [x] 5.4 PWA/offline hardening: SW registration failure surfacing, stale-data
+      signal on NetworkFirst cache hits, refetch-on-reconnect, and a
+      production-preview e2e project (11/11 e2e incl. offline shell, offline
+      save error, reconnect recovery; commits 629d0f9 + 5ca1134)
 - [x] 5.5 Docs: README self-hosting + limitations, `docs/DEPLOYMENT.md`,
       `SECURITY.md` (commit 382ae34)
 - [ ] 5.6 Deliberate `v1.0.0`: full suite green, engine exit code 0, premium
