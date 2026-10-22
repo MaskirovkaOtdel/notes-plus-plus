@@ -32,7 +32,7 @@ v1.0.0). Workstream tasks are tracked here as they are picked up:
 - [x] 5.6 Deliberate `v1.0.0`: final full gate green (lint, format, typecheck,
       coverage web 97.41/api 100, build, e2e 11/11); pushed bd5e0ac — GitHub
       CI green; Release run decided with `engine exit code: 0 (0=release,
-  2=skip)` + `Releasing v1.0.0 (bump: major)` (breaking footer on
+2=skip)` + `Releasing v1.0.0 (bump: major)` (breaking footer on
       bd5e0ac: loopback default bind + dist-only package exports); tag +
       release live; CHANGELOG entry committed; premium synced (738ca95) with
       its own full suite + e2e green
