@@ -1,4 +1,6 @@
+import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import { buildApp } from "./app.js";
 import { InMemoryNotesRepository } from "./db/in-memory.js";
@@ -14,6 +16,10 @@ const DATABASE_URL = process.env.DATABASE_URL;
 // network; anything beyond that should sit behind a reverse proxy.
 const HOST = process.env.HOST ?? "127.0.0.1";
 const API_TOKEN = process.env.NOTESPP_API_TOKEN;
+// Optional: serve the built web app from this directory (single origin).
+const WEB_DIST = process.env.WEB_DIST;
+// Apply version-controlled SQL migrations at boot (container deployments).
+const MIGRATE_ON_BOOT = process.env.MIGRATE_ON_BOOT === "true";
 
 async function main() {
   let repo;
@@ -21,6 +27,12 @@ async function main() {
   if (DATABASE_URL) {
     const client = postgres(DATABASE_URL, { max: 10 });
     const db = drizzle(client, { schema });
+    if (MIGRATE_ON_BOOT) {
+      console.warn("applying database migrations");
+      await migrate(db, {
+        migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
+      });
+    }
     repo = new DrizzleNotesRepository(db);
     console.warn("using Postgres repository");
   } else {
@@ -45,6 +57,7 @@ async function main() {
     version: VERSION,
     extensions: await loadApiExtensions(),
     apiToken: API_TOKEN,
+    webDist: WEB_DIST,
   });
 
   const close = async () => {

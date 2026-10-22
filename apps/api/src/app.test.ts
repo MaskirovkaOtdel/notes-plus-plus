@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "./app.js";
 import { InMemoryNotesRepository } from "./db/in-memory.js";
@@ -379,5 +380,72 @@ describe("bearer token auth", () => {
   it("keeps /health open with query parameters", async () => {
     const res = await tokenApp.inject({ method: "GET", url: "/health?probe=1" });
     expect(res.statusCode).toBe(200);
+  });
+});
+
+describe("static web serving", () => {
+  let staticApp: FastifyInstance;
+
+  beforeAll(async () => {
+    staticApp = await buildApp({
+      repo: new InMemoryNotesRepository(),
+      version: "0.0.0-test",
+      logger: false,
+      webDist: fileURLToPath(new URL("../fixtures/web-dist", import.meta.url)),
+    });
+  });
+
+  afterAll(async () => {
+    await staticApp.close();
+  });
+
+  it("serves index.html at /", async () => {
+    const res = await staticApp.inject({
+      method: "GET",
+      url: "/",
+      headers: { accept: "text/html" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('<div id="root">');
+  });
+
+  it("serves static assets", async () => {
+    const res = await staticApp.inject({ method: "GET", url: "/app.js" });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("falls back to index.html for SPA navigation deep links", async () => {
+    const res = await staticApp.inject({
+      method: "GET",
+      url: "/some/deep/link",
+      headers: { accept: "text/html" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('<div id="root">');
+  });
+
+  it("keeps the JSON 404 for unknown paths without an HTML accept", async () => {
+    const res = await staticApp.inject({ method: "GET", url: "/nope" });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().code).toBe("ROUTE_NOT_FOUND");
+  });
+
+  it("keeps API routes working alongside static hosting", async () => {
+    const res = await staticApp.inject({ method: "GET", url: "/health" });
+    expect(res.statusCode).toBe(200);
+    const notes = await staticApp.inject({ method: "GET", url: "/notes" });
+    expect(notes.statusCode).toBe(200);
+  });
+
+  it("does not serve dotfiles", async () => {
+    const res = await staticApp.inject({ method: "GET", url: "/.hidden" });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("does not list directories", async () => {
+    // An unknown directory path must not enumerate contents.
+    const dir = await staticApp.inject({ method: "GET", url: "/subdir/" });
+    expect(dir.statusCode).toBe(404);
+    expect(dir.json().code).toBe("ROUTE_NOT_FOUND");
   });
 });

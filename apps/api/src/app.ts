@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { ExtensionListSchema, HealthSchema } from "@notespp/shared";
+import fastifyStatic from "@fastify/static";
 import Fastify, { LogController, type FastifyInstance } from "fastify";
 import {
   serializerCompiler,
@@ -30,6 +31,13 @@ export interface BuildAppOptions {
    * neither the token length nor its bytes leak through timing.
    */
   apiToken?: string;
+  /**
+   * When set to a non-empty directory, the API also serves the built web
+   * app from it (single-origin deployment: one process, one port). GET
+   * requests that accept HTML and match no API route fall back to
+   * `index.html` so SPA deep links work; everything else keeps the JSON 404.
+   */
+  webDist?: string;
 }
 
 /**
@@ -44,6 +52,7 @@ export async function buildApp({
   logger = true,
   extensions = [],
   apiToken,
+  webDist,
 }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger,
@@ -80,6 +89,13 @@ export async function buildApp({
   }
 
   const startedAt = Date.now();
+
+  // Optional static hosting of the built web app (Docker/single-origin
+  // deployments). No directory listing; @fastify/static confines reads to
+  // `webDist` and blocks path traversal.
+  if (webDist !== undefined && webDist !== "") {
+    await app.register(fastifyStatic, { root: webDist, wildcard: false });
+  }
 
   // Compose the write-path seam first: extensions may wrap the repository,
   // and note routes plus every extension context must see one consistent
@@ -137,7 +153,17 @@ export async function buildApp({
     return reply.code(500).send({ error: "Internal server error", code: "INTERNAL" });
   });
 
-  app.setNotFoundHandler((_request, reply) => {
+  app.setNotFoundHandler((request, reply) => {
+    // SPA deep links: navigation requests that no API route matched get the
+    // app shell. Non-HTML requests keep the JSON 404 envelope.
+    if (
+      webDist !== undefined &&
+      webDist !== "" &&
+      request.method === "GET" &&
+      (request.headers.accept ?? "").includes("text/html")
+    ) {
+      return reply.sendFile("index.html");
+    }
     reply.code(404).send({ error: "Route not found", code: "ROUTE_NOT_FOUND" });
   });
 
