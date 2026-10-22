@@ -13,7 +13,7 @@
 # Triggers:
 #   - push to main
 #   - pull_request closed & merged into main
-#   - workflow_dispatch (manual on-demand with optional force input)
+#   - workflow_dispatch (manual on-demand; optional force and explicit version inputs)
 # ============================================================================
 
 name: Release
@@ -30,6 +30,10 @@ on:
         description: "Force cut release (bypass gate checks)"
         type: boolean
         default: false
+      version:
+        description: "Explicit version to cut, exactly X.Y.Z (deliberate cut; overrides the computed bump)"
+        type: string
+        required: false
 
 permissions:
   contents: write
@@ -57,10 +61,16 @@ jobs:
         id: version
         env:
           FORCE: ${{ inputs.force == true && '--force' || '' }}
+          # The version input reaches the engine through an env var, never
+          # inline ${{ }} interpolation — a user-supplied string must not be
+          # able to reach the runner's shell. The engine validates strict
+          # X.Y.Z and hard-exits on bad input before doing anything.
+          VERSION_OVERRIDE: ${{ inputs.version || '' }}
         run: |
           set -uo pipefail
 
-          # The engine exits 0 to release, 2 to skip.
+          # The engine exits 0 to release, 2 to skip (anything else = invalid
+          # override input, annotated as an error below).
           set +e
           node scripts/version-engine.mjs --github-output $FORCE
           code=$?

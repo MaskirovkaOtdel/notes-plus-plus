@@ -25,6 +25,13 @@
  *    node scripts/version-engine.mjs                 # full decision (JSON)
  *    node scripts/version-engine.mjs --dry-run       # no writes, human output
  *    node scripts/version-engine.mjs --github-output # append to $GITHUB_OUTPUT
+ *    node scripts/version-engine.mjs --set-version=1.1.0   # deliberate cut
+ *
+ *  Deliberate cut: pass an explicit version (CLI --set-version=X.Y.Z, or the
+ *  VERSION_OVERRIDE env the Release workflow feeds its dispatch input into).
+ *  The computed bump is discarded and exactly that version is cut (bump
+ *  "override"); the meta-path gate is bypassed, dedupe still blocks a version
+ *  that already exists as a tag, and invalid input hard-exits immediately.
  *
  *  Requires a git repo with at least one commit. Uses only stdlib.
  */
@@ -95,6 +102,22 @@ const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
 const GITHUB_OUTPUT = args.includes("--github-output");
 const FORCE_FLAG = args.includes("--force");
+
+// --- Deliberate cut: explicit version override ------------------------------
+// The CLI arg wins over the VERSION_OVERRIDE env var (together these feed the
+// Release workflow's "version" dispatch input into the engine).
+const overrideFromArgs = args.find((a) => a.startsWith("--set-version="));
+const rawOverride = overrideFromArgs
+  ? overrideFromArgs.slice("--set-version=".length)
+  : (process.env.VERSION_OVERRIDE ?? "").trim();
+const OVERRIDE = rawOverride === "" ? null : rawOverride;
+
+if (OVERRIDE !== null && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(OVERRIDE)) {
+  console.error(
+    `version engine: invalid --set-version "${OVERRIDE}" — must be exactly X.Y.Z`,
+  );
+  process.exit(1);
+}
 
 /** Run a git command, returning trimmed stdout. Throws on failure. */
 function git(cmdArgs, { allowFail = false } = {}) {
@@ -221,7 +244,7 @@ const releaseWorthy = parsed.filter(
 // 3. Determine the requested bump level
 // ---------------------------------------------------------------------------
 
-let bump = "none"; // none | patch | minor | major
+let bump = "none"; // none | patch | minor | major | override
 
 if (FORCE_FLAG) {
   bump = "patch";
@@ -264,7 +287,12 @@ switch (bump) {
     break;
 }
 
-const nextVersion = formatSemver([maj, min, pat]);
+const computedVersion = formatSemver([maj, min, pat]);
+const nextVersion =
+  OVERRIDE !== null ? `${CONFIG.tagPrefix}${OVERRIDE}` : computedVersion;
+if (OVERRIDE !== null) {
+  bump = "override";
+}
 
 // ---------------------------------------------------------------------------
 // 5. Apply the anti-overflow gates
@@ -273,7 +301,12 @@ const nextVersion = formatSemver([maj, min, pat]);
 const gates = {
   type: {
     passed: bump !== "none",
-    detail: bump === "none" ? "no release-worthy commits" : `bump=${bump}`,
+    detail:
+      bump === "override"
+        ? "explicit version override (deliberate cut)"
+        : bump === "none"
+          ? "no release-worthy commits"
+          : `bump=${bump}`,
   },
   path: { passed: true, detail: "ok" },
   cooldown: { passed: true, detail: "ok" },
@@ -303,12 +336,14 @@ if (lastTagCommit) {
       CONFIG.metaPathFiles.includes(f);
     const allMeta = changedFiles.every(isMeta);
     gates.path = {
-      passed: FORCE || !allMeta,
+      passed: FORCE || OVERRIDE !== null || !allMeta,
       detail: FORCE
         ? "forced release bypass"
-        : allMeta
-          ? `only meta files changed (${changedFiles.length} files)`
-          : `${changedFiles.filter((f) => !isMeta(f)).length} source files changed`,
+        : OVERRIDE !== null
+          ? "deliberate cut via explicit version override"
+          : allMeta
+            ? `only meta files changed (${changedFiles.length} files)`
+            : `${changedFiles.filter((f) => !isMeta(f)).length} source files changed`,
     };
   }
 } else {
@@ -374,6 +409,7 @@ const result = {
   commitCount: commits.length,
   releaseWorthyCount: releaseWorthy.length,
   forced: FORCE,
+  override: OVERRIDE ?? null,
   gates,
   commits: parsed.map((c) => ({
     hash: c.hash,
