@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
 import {
   makeHealth,
@@ -19,7 +19,7 @@ function renderApp() {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return render(<App />, { wrapper });
+  return { ...render(<App />, { wrapper }), client };
 }
 
 describe("App", () => {
@@ -70,6 +70,21 @@ describe("App", () => {
     await waitFor(() =>
       expect(screen.getByTestId("app-version")).toHaveTextContent("v4.2.0"),
     );
+  });
+
+  it("refetches queries when the network reconnects", async () => {
+    stubFetchByRoute({
+      "/health": { body: makeHealth() },
+      "/notes": { body: makeListResponse([]) },
+    });
+    const { client } = renderApp();
+    await waitFor(() => expect(screen.getByTestId("app-version")).toBeInTheDocument());
+
+    const spy = vi.spyOn(client, "invalidateQueries");
+    window.dispatchEvent(new Event("online"));
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    spy.mockRestore();
   });
 
   it("creates a note when the button is clicked", async () => {

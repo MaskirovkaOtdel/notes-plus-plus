@@ -29,14 +29,26 @@ export const makeListResponse = (
   ...overrides,
 });
 
-type StubResponse = { status?: number; body: unknown };
+type StubResponse = {
+  status?: number;
+  body: unknown;
+  /** Response headers (e.g. the SW's `x-from-cache` stamp). */
+  headers?: Record<string, string>;
+};
 
 function toResponse(res: StubResponse): Response {
+  const headerMap = new Map(
+    Object.entries(res.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]),
+  );
   return {
     ok: (res.status ?? 200) < 400,
     status: res.status ?? 200,
+    headers: {
+      get: (name: string) =>
+        (headerMap.get(name.toLowerCase()) as string | undefined) ?? null,
+    },
     json: async () => res.body,
-  } as Response;
+  } as unknown as Response;
 }
 
 /** Stub global fetch with a sequence of JSON responses. */

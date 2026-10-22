@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button, NoteCard } from "@notespp/ui";
 import { NoteDetail } from "./components/NoteDetail.js";
+import { StatusBanner } from "./components/StatusBanner.js";
 import { loadWebExtensions } from "./extensions/loader.js";
 import type { NotesWebExtension } from "./extensions/types.js";
 import { useCreateNote, useHealth, useNotes } from "./lib/hooks.js";
@@ -13,6 +15,18 @@ export function App() {
   const { data, isPending, isError, refetch } = useNotes(search ? { search } : {});
   const createNote = useCreateNote();
   const health = useHealth();
+  const queryClient = useQueryClient();
+
+  // Refetch on reconnect: the moment the network returns, drop cached query
+  // state so the list/detail views re-pull from the API (and the stale-data
+  // banner clears when those fresh responses land).
+  useEffect(() => {
+    const refetchOnReconnect = () => {
+      void queryClient.invalidateQueries();
+    };
+    window.addEventListener("online", refetchOnReconnect);
+    return () => window.removeEventListener("online", refetchOnReconnect);
+  }, [queryClient]);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +57,7 @@ export function App() {
       </header>
 
       <div className="mt-6">
+        <StatusBanner />
         <label htmlFor="search" className="sr-only">
           Search notes
         </label>

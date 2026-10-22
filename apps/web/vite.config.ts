@@ -3,6 +3,41 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vitest/config";
 import { VitePWA } from "vite-plugin-pwa";
 
+/** API proxy: dev server and preview server route API calls to Fastify. */
+const apiProxy = {
+  "/health": "http://localhost:4000",
+  "/notes": "http://localhost:4000",
+  "/extensions": "http://localhost:4000",
+};
+
+/**
+ * Workbox plugin serialized into the generated service worker (functions in
+ * the `workbox` config are stringified into `sw.js`, so this must be
+ * self-contained and touch only service-worker globals). It stamps every
+ * response the NetworkFirst runtime cache produces with `x-from-cache: 1`,
+ * which is how the page distinguishes stale (cached) API data from fresh
+ * network responses.
+ */
+const stampCachedResponses = {
+  // An arrow property, not a method shorthand: workbox-build stringifies
+  // plugin functions via .toString(), and a method would serialize to
+  // `async name(){...}` — invalid when re-wrapped as `{ key: ... }`.
+  cachedResponseWillBeUsed: async ({
+    cachedResponse,
+  }: {
+    cachedResponse?: Response;
+  }): Promise<Response | undefined> => {
+    if (!cachedResponse) return cachedResponse;
+    const headers = new Headers(cachedResponse.headers);
+    headers.set("x-from-cache", "1");
+    return new Response(await cachedResponse.arrayBuffer(), {
+      status: cachedResponse.status,
+      statusText: cachedResponse.statusText,
+      headers,
+    });
+  },
+};
+
 export default defineConfig({
   plugins: [
     react(),
@@ -47,6 +82,7 @@ export default defineConfig({
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [200] },
+              plugins: [stampCachedResponses],
             },
           },
         ],
@@ -55,12 +91,11 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    proxy: {
-      // Route API calls to the Fastify server during development.
-      "/health": "http://localhost:4000",
-      "/notes": "http://localhost:4000",
-      "/extensions": "http://localhost:4000",
-    },
+    proxy: apiProxy,
+  },
+  preview: {
+    port: 4173,
+    proxy: apiProxy,
   },
   test: {
     environment: "jsdom",

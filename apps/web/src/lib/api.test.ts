@@ -1,8 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { api, ApiError } from "./api.js";
+import {
+  getConnectivitySnapshot,
+  markDataFresh,
+  reportRegistration,
+} from "./connectivity.js";
 import { makeListResponse, makeNote, stubFetch } from "../test-utils.js";
 
 describe("api client", () => {
+  beforeEach(() => {
+    reportRegistration("pending");
+    markDataFresh();
+  });
+
   it("lists notes and parses the response", async () => {
     const note = makeNote();
     stubFetch([{ body: makeListResponse([note]) }]);
@@ -50,5 +60,30 @@ describe("api client", () => {
     await api.listNotes({ search: "milk" });
     const url = fn.mock.calls[0]?.[0] as unknown as string;
     expect(url).toContain("search=milk");
+  });
+
+  it("flags data as stale when the SW cache stamp is present", async () => {
+    stubFetch([
+      {
+        body: makeListResponse([makeNote()]),
+        headers: { "x-from-cache": "1" },
+      },
+    ]);
+
+    await api.listNotes();
+    expect(getConnectivitySnapshot().stale).toBe(true);
+  });
+
+  it("clears the stale signal when a fresh network response lands", async () => {
+    stubFetch([
+      { body: makeListResponse([]), headers: { "x-from-cache": "1" } },
+      { body: makeListResponse([makeNote()]) },
+    ]);
+
+    await api.listNotes();
+    expect(getConnectivitySnapshot().stale).toBe(true);
+
+    await api.listNotes();
+    expect(getConnectivitySnapshot().stale).toBe(false);
   });
 });

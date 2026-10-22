@@ -12,6 +12,7 @@ import {
   type Note,
   type UpdateNote,
 } from "@notespp/shared";
+import { markDataFresh, markDataStale } from "./connectivity.js";
 
 /** Base URL for the API. In dev this is proxied by Vite. */
 const BASE = import.meta.env.VITE_API_BASE ?? "";
@@ -47,6 +48,12 @@ async function request<T>(
     ...((options.headers as Record<string, string>) ?? {}),
   };
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
+
+  // The service worker stamps responses its NetworkFirst cache produced
+  // (see vite.config.ts). A stamp means the payload may be stale — surface
+  // that signal until a fresh network response clears it again.
+  if (res.headers.get("x-from-cache") === "1") markDataStale();
+  else markDataFresh();
 
   if (res.status === 204) return undefined as T;
 
