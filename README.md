@@ -28,9 +28,11 @@ packages/
   shared/       Zod schemas + types shared by web and API
   ui/           Reusable React primitives (Button, NoteCard)
 e2e/            Playwright end-to-end tests
-infra/          docker-compose for local Postgres
+infra/          docker-compose for Postgres + the app
+docs/           Deployment guide, extension API, edition overview
 scripts/        Version engine + release-notes generator
 .github/        Workflows, CODEOWNERS, PR template
+Dockerfile      Multi-stage production image (API + web on one port)
 ```
 
 ## Getting started
@@ -49,6 +51,39 @@ cp .env.example .env  # set DATABASE_URL
 pnpm dev:api
 ```
 
+## Self-hosting
+
+Run the whole app (API + web + Postgres) with Docker:
+
+```bash
+NOTESPP_DB_PASSWORD=<strong-password> pnpm app:up
+# open http://localhost:4000
+```
+
+The image builds everything from source, runs as a non-root user, applies
+database migrations at boot, and serves the API and the web UI on one port.
+No Docker? Build once and run under plain Node (>=24):
+
+```bash
+pnpm install && pnpm build
+WEB_DIST=./apps/web/dist MIGRATE_ON_BOOT=true \
+  DATABASE_URL=postgres://... node apps/api/dist/server.js
+```
+
+Full configuration (auth token, bind address, reverse proxy, backup) lives in
+[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md); the security posture is described
+in [SECURITY.md](./SECURITY.md).
+
+## Limitations (by design, for 1.0)
+
+- **Offline reads, not offline writes.** Cached notes stay readable offline;
+  edits made while offline fail with an inline error and are not queued.
+- **Single user, single device at a time.** No accounts, sharing, or
+  collaboration.
+- **No authentication unless you enable it.** The API binds to `127.0.0.1` by
+  default; set `NOTESPP_API_TOKEN` (and `VITE_API_TOKEN` in the web build)
+  before exposing it beyond localhost. See [SECURITY.md](./SECURITY.md).
+
 ## Scripts
 
 | Command                        | Description                        |
@@ -61,6 +96,7 @@ pnpm dev:api
 | `pnpm test:e2e`                | Playwright end-to-end              |
 | `pnpm version:check`           | Dry-run the version engine locally |
 | `pnpm db:up` / `db:down`       | Manage local Postgres              |
+| `pnpm app:up` / `app:down`     | Build & run the Docker app         |
 
 ## Versioning & releases
 
