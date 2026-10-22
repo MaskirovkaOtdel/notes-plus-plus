@@ -17,13 +17,16 @@ v1.0.0). Workstream tasks are tracked here as they are picked up:
 - [x] 5.1 Packaging: workspace packages build to `dist` with real `exports`;
       plain-`node` API start works; `pnpm pack` consumable (verified: build +
       boot + pack + full suite green, commit b51bd96)
-- [ ] 5.2 Docker: multi-stage Dockerfile + compose app service, live-verified
-- [ ] 5.3 Network safety: `HOST` bind control + optional `NOTESPP_API_TOKEN`
-      bearer auth + tests
+- [x] 5.2 Docker: multi-stage Dockerfile + compose app service, live-verified
+      (clean-volume boot, migrations, browser create→edit→read through the
+      deployed UI, non-root, healthcheck; commits def1c27 + d9337ba)
+- [x] 5.3 Network safety: `HOST` bind control + optional `NOTESPP_API_TOKEN`
+      bearer auth + tests (live probes: loopback default / gated 0.0.0.0 /
+      unset unchanged; commit eb6a999)
 - [ ] 5.4 PWA/offline hardening: SW registration resilience, stale-data signal,
       production-preview e2e coverage
-- [ ] 5.5 Docs: README self-hosting + limitations, `docs/DEPLOYMENT.md`,
-      `SECURITY.md`
+- [x] 5.5 Docs: README self-hosting + limitations, `docs/DEPLOYMENT.md`,
+      `SECURITY.md` (commit 382ae34)
 - [ ] 5.6 Deliberate `v1.0.0`: full suite green, engine exit code 0, premium
       synced
 
