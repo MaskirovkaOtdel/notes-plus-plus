@@ -153,6 +153,9 @@ jobs:
         run: pnpm test:e2e
         env:
           WEB_URL: http://localhost:5173
+          # The pwa project runs against a production preview; CI's preview
+          # server (started above) serves it on the same port.
+          PREVIEW_URL: http://localhost:5173
 
       - name: Upload Playwright report
         if: failure()
